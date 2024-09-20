@@ -1,0 +1,8 @@
+Origin interactor	Destination interactor	Interaction Name	Interaction Frame	Destination Area	Origin Area
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	2790	917.0360949264777	1025.8730259317476
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	3652	935.4480565505564	1719.0922278399153
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	3654	791.8301212994004	1708.8763720786278
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	4666	975.1795337335741	1146.5356808564616
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	8803	992.8333069990557	997.9217222585368
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	8807	1019.2408010505612	990.2188099461487
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	8823	929.026869635565	959.3371266026186

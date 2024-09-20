@@ -1,0 +1,19 @@
+Origin interactor	Destination interactor	Interaction Name	Interaction Frame	Destination Area	Origin Area
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	363	942.1689875421683	995.0764110604629
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	380	943.3998793619497	927.1105446109175
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	383	909.8444312319949	1076.7133651921108
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	384	970.1462803155713	933.2075508874068
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	385	916.1539491786581	1075.8334028348718
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	386	967.5562786404948	935.6527921168315
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	387	1111.5053037083421	1085.7993467247268
+ArUcoTag#purple	ArUcoTag#black	Head_to_Body	387	3243.920275753585	1111.5053037083421
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	445	1447.9994336899576	1499.051730788651
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	446	1258.7224006232434	1489.0838389181995
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	448	1666.6330945250193	1460.3594641941395
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	454	1417.5341354288817	1631.7916074082202
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	455	1295.8731523515303	1051.0192199267938
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	913	916.7582850902423	872.6051265812368
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	973	1142.214610860055	906.8020865877473
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	977	1118.7297667369637	805.2672224489063
+ArUcoTag#purple	ArUcoTag#black	Head_to_Body	1491	3948.7058044788173	916.1732395955473
+ArUcoTag#purple	ArUcoTag#black	Head_to_Body	1749	3645.4556361930236	933.1911538236958

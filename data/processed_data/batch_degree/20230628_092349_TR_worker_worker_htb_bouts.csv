@@ -1,0 +1,7 @@
+,Origin interactor,Destination interactor,Interaction Name,Interaction Frame,Destination Area,Origin Area,Bout
+0,ArUcoTag#black,ArUcoTag#purple,Head_to_Body,15451,1989.1915092875004,1405.339798351194,1
+1,ArUcoTag#black,ArUcoTag#purple,Head_to_Body,15453,2009.801977277086,1289.2890944112014,1
+2,ArUcoTag#black,ArUcoTag#purple,Head_to_Body,15454,2042.2800967085864,1302.0067800420536,1
+3,ArUcoTag#black,ArUcoTag#purple,Head_to_Body,15456,2012.255164836554,1301.8791645930178,1
+4,ArUcoTag#black,ArUcoTag#purple,Head_to_Body,15457,2010.6082319537347,1036.7234099580178,1
+5,ArUcoTag#purple,ArUcoTag#black,Head_to_Body,15457,4263.214395679861,1270.559218455378,2

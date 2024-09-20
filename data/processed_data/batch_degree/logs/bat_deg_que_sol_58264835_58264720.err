@@ -1,0 +1,32 @@
+Traceback (most recent call last):
+  File "/scratch/gpfs/mw0425/KL_local_23/batch_degree/analyze_network.py", line 42, in <module>
+    df = pd.read_table(sys.argv[1])
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/util/_decorators.py", line 311, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 777, in read_table
+    return _read(filepath_or_buffer, kwds)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 575, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 932, in __init__
+    self._engine = self._make_engine(f, self.engine)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 1216, in _make_engine
+    self.handles = get_handle(  # type: ignore[call-overload]
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/common.py", line 786, in get_handle
+    handle = open(
+FileNotFoundError: [Errno 2] No such file or directory: '../interactions/_queen_solitary.txt'
+Traceback (most recent call last):
+  File "/scratch/gpfs/mw0425/KL_local_23/batch_degree/analyze_network.py", line 42, in <module>
+    df = pd.read_table(sys.argv[1])
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/util/_decorators.py", line 311, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 777, in read_table
+    return _read(filepath_or_buffer, kwds)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 575, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 932, in __init__
+    self._engine = self._make_engine(f, self.engine)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/parsers/readers.py", line 1216, in _make_engine
+    self.handles = get_handle(  # type: ignore[call-overload]
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/io/common.py", line 786, in get_handle
+    handle = open(
+FileNotFoundError: [Errno 2] No such file or directory: '../interactions/_queen_solitary.txt'

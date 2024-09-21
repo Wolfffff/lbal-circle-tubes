@@ -19,3 +19,5 @@ repos:
       - id: style-files
         args: [--style_pkg=styler, --cache-root=styler-perm]
       - id: lintr
+        additional_dependencies:
+          - ggplot2

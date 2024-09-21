@@ -5,8 +5,9 @@
 
 
 #!/usr/bin/env python
-import numpy as np
 import pickle
+
+import numpy as np
 
 
 class ColorTagModel:

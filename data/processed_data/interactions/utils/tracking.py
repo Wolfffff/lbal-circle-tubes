@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import sleap
 import yaml
-
 from naps.sleap_utils import load_tracks_from_slp
 from naps.utils.interactor import Interactor
 
@@ -133,7 +132,7 @@ class TrackingArray:
         # 1) By default, plot red
         # 2) If given a list or array, check and assign the color
         # 3) If given a str, assign the color from matplotlib
-        if plot_color == None:
+        if plot_color is None:
             plot_color = (255, 0, 0)
         elif isinstance(plot_color, (list, tuple)):
             if len(plot_color) != 3:

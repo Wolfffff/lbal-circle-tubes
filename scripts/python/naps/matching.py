@@ -1,25 +1,11 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
-#!/usr/bin/env python
 import os
 from collections import defaultdict
-from typing import Callable
+from typing import Callable, DefaultDict
 
 import cv2
 import numpy as np
-from skimage.draw import disk
-
 from cost_matrix import CostMatrix
+from skimage.draw import disk
 
 
 class Matching:
@@ -70,7 +56,7 @@ class Matching:
         self.marker_detector = marker_detector
         self.crop_type = crop_type
 
-    def match(self) -> defaultdict(lambda: defaultdict(str)):
+    def match(self) -> DefaultDict:
         """Performs matching.
 
         Returns:
@@ -133,7 +119,7 @@ class MatchFrame:
         # Image arguments
         self.frame = frame
         self.frame_exists = frame_exists
-        self.frame_images = {}
+        self.frame_images: dict = {}
 
     def __nonzero__(self):
         """Replaces nonzero for the class
@@ -245,7 +231,7 @@ class MatchFrame:
             defaultdict(list): Dictionary of matching results for a single frame.
         """
 
-        track_tag_dict = defaultdict(list)
+        track_tag_dict: DefaultDict = defaultdict(list)
 
         # Loop the frame track images
         for track, track_image in self.frame_images.items():

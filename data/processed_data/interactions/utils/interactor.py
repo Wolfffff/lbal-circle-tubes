@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import os
 
 import numpy as np
 from shapely import area
@@ -164,7 +163,7 @@ class Interactor:
 
             # Confirm the type of symmetical
             if not isinstance(symmetical, bool):
-                raise Exception(f"symmetical must be boolean")
+                raise Exception("symmetical must be boolean")
 
             # Report symmetical results
             if symmetical:

@@ -1,16 +1,28 @@
 # utils.R
 
+source("scripts/R/constants.R")
+
 # Function to check and install missing packages using pak
 install_if_missing <- function(packages) {
+  # Ensure pak is installed
   if (!requireNamespace("pak", quietly = TRUE)) {
     install.packages("pak")
   }
+
+  # Find packages that are not installed
   missing_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+
+  # Install missing packages using pak
   if (length(missing_packages)) {
     pak::pkg_install(missing_packages)
   }
+
+  # Load the required packages
   invisible(lapply(packages, library, character.only = TRUE))
 }
+
+# Run the function to install and load packages
+install_if_missing(required_packages)
 
 # Load master data and filter
 load_master_data <- function(base_dir) {

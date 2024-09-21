@@ -1,5 +1,11 @@
 # plots.R
 
+#' @importFrom ggplot2 geom_jitter scale_color_manual scale_fill_manual theme_classic labs ggsave
+
+source("scripts/R/constants.R")
+require(ggplot2)
+
+
 # Function to create boxplots for ovarian development per caste
 plot_ovarian_development <- function(plot_df, colors) {
   ggplot(data = plot_df) +

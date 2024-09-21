@@ -2,16 +2,12 @@
 # coding: utf-8
 
 # In[ ]:
-
-
-#!/usr/bin/env python
 import argparse
 import logging
 import time
 from collections import defaultdict
 
 import sleap
-
 from color_tag import (
     ColorTagModel,
 )  # this should be from naps.color_tag import ColorTagModel

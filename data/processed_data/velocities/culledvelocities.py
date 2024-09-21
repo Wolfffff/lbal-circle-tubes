@@ -1,22 +1,14 @@
+import copy
+import sys
+
 import h5py
 import numpy as np
-import sys
+import pandas as pd
+import scipy.ndimage
+import scipy.stats as stats
 
 prefix = sys.argv[1]
 filename = prefix + "_8_8_5_1_12_interp_filtered.h5"
-
-import copy
-import math
-import scipy.stats as stats
-import pandas as pd
-import scipy.ndimage
-from tqdm import tqdm
-from scipy.signal import savgol_filter
-import matplotlib.colors as colors
-import logging
-import skvideo.io
-import matplotlib.pyplot as plt
-from base64 import b64encode
 
 
 def diff(node_loc, diff_func=np.gradient, **kwargs):
@@ -198,7 +190,7 @@ def integratedfilter(locations, velsbool, extvelsbool, coordbool):
     locationsfilter = copy.deepcopy(locations)
     locationsfilter = locationsfilter[1:, :, :, :]
     previousnans = np.isnan(locationsfilter[:, :, 0, :])
-    previousandpresent = previousnans & finalbool
+    previousnans & finalbool
     locationsfilter[final2dbool] = np.nan
     return locationsfilter
 

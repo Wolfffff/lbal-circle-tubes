@@ -1,6 +1,7 @@
 # utils.R
 
 source("scripts/R/constants.R")
+require(stringr)
 
 # Function to check and install missing packages using pak
 install_if_missing <- function(packages) {

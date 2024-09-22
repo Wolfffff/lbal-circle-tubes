@@ -21,3 +21,4 @@ repos:
       - id: lintr
         additional_dependencies:
           - ggplot2
+          - tidyverse

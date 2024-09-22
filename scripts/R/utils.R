@@ -52,7 +52,7 @@ prepare_caste_data <- function(master_data) {
 load_motion_data <- function(video_list_vels) {
   motion_prop_list <- list()
 
-  for (i in 1:length(video_list_vels)) {
+  for (i in seq_along(video_list_vels)) {
     vels <- read.csv(video_list_vels[i])
     frame_count <- 0
     for (j in 200:nrow(vels)) {
@@ -72,7 +72,7 @@ load_bout_data <- function(video_list_hth, video_list_htb) {
   hth_bout_list <- list()
   htb_bout_list <- list()
 
-  for (i in 1:length(video_list_hth)) {
+  for (i in seq_along(video_list_hth)) {
     hth_bout_list[i] <- if (file.exists(video_list_hth[i])) length(unique(read.csv(video_list_hth[i])$Bout)) else 0
     htb_bout_list[i] <- if (file.exists(video_list_htb[i])) length(unique(read.csv(video_list_htb[i])$Bout)) else 0
   }
@@ -135,7 +135,7 @@ load_video_list_and_contrast <- function(base_dir) {
 generate_vels_file_paths <- function(video_list, contrast_list, base_dir_vels) {
   video_list_vels <- list()
 
-  for (i in 1:length(video_list)) {
+  for (i in seq_along(video_list)) {
     video_list_vels[i] <- file.path(base_dir_vels, paste0(video_list[i], "_", contrast_list[i], "_vels.csv"))
   }
 
@@ -146,7 +146,7 @@ generate_vels_file_paths <- function(video_list, contrast_list, base_dir_vels) {
 calculate_motion_proportion <- function(video_list_vels) {
   motion_prop_list <- list()
 
-  for (i in 1:length(video_list_vels)) {
+  for (i in seq_along(video_list_vels)) {
     vels <- read.csv(video_list_vels[i])
 
     frame_count <- 0
@@ -173,7 +173,7 @@ create_video_df <- function(master_data) {
     nest_ID_contrast = character()
   )
 
-  for (i in 1:nrow(master_data)) {
+  for (i in seq_len(nrow(master_data))) {
     # Skip if this specimen is already accounted for
     if (master_data$Specimen.ID[i] %in% unlist(partner_list)) {
       next

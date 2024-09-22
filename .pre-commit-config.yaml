@@ -22,3 +22,4 @@ repos:
         additional_dependencies:
           - ggplot2
           - tidyverse
+          - stringr

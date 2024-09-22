@@ -452,7 +452,7 @@ avg_vels_sol_sol <- rowMeans(velocity_df_sol_sol)
 
 # third, create line graphs
 plot_df <- data.frame(
-  time = c(1:length(avg_vels_soc_soc) / 1200),
+  time = c(seq_along(avg_vels_soc_soc) / 1200),
   soc_soc = avg_vels_soc_soc * 0.0946 * 20,
   soc_sol = avg_vels_soc_sol * 0.0946 * 20,
   sol_sol = avg_vels_sol_sol * 0.0946 * 20
@@ -653,7 +653,7 @@ video_df <- data.frame(
   contrast = character(),
   nest_ID_contrast = character()
 )
-for (i in 1:nrow(master_data)) {
+for (i in seq_len(nrow(master_data))) {
   if (master_data$Specimen.ID[i] %in% unlist(partner_list)) {
     next
   }
@@ -705,14 +705,14 @@ contrast_list <- c(
 )
 
 video_list_vels <- list()
-for (i in 1:length(video_list)) {
+for (i in seq_along(video_list)) {
   video_list_vels[i] <- paste(video_list[i], contrast_list[i], "vels.csv", sep = "_")
 }
 video_list_vels <- unlist(video_list_vels)
 
 # now determine when bees are moving or not
 motion_prop_list <- list()
-for (i in 1:length(video_list_vels)) {
+for (i in seq_along(video_list_vels)) {
   vels <- read.csv(video_list_vels[i])
 
   frame_count <- 0
@@ -733,7 +733,7 @@ motion_prop_list <- unlist(motion_prop_list)
 setwd("G:\\My Drive\\KL\\ICE 2024\\batch_degree")
 video_list_hth <- list()
 video_list_htb <- list()
-for (i in 1:length(video_list)) {
+for (i in seq_along(video_list)) {
   video_list_hth[i] <- paste(video_list[i], contrast_list[i], "hth_bouts.csv", sep = "_")
   video_list_htb[i] <- paste(video_list[i], contrast_list[i], "htb_bouts.csv", sep = "_")
 }
@@ -743,7 +743,7 @@ video_list_htb <- unlist(video_list_htb)
 
 hth_bout_list <- list()
 htb_bout_list <- list()
-for (i in 1:length(video_list_hth)) {
+for (i in seq_along(video_list_hth)) {
   if (file.exists(video_list_hth[i])) {
     hth <- read.csv(video_list_hth[i])
     hth_bout_list[i] <- length(unique(hth$Bout))
@@ -779,7 +779,7 @@ lmm_df <- lmm_df[match(video_df$videoname, lmm_df$videoname), ]
 
 lmm_df["nest_ID_contrast"] <- video_df$nest_ID_contrast
 
-for (i in 1:length(lmm_df$date)) {
+for (i in seq_along(lmm_df$date)) {
   lmm_df$date[i] <- strsplit(lmm_df$date[i], "_")[[1]][1]
 }
 
@@ -912,7 +912,7 @@ lmm_df <- lmm_df[match(video_df$videoname, lmm_df$videoname), ]
 
 lmm_df["nest_ID_contrast"] <- video_df$nest_ID_contrast
 
-for (i in 1:length(lmm_df$date)) {
+for (i in seq_along(lmm_df$date)) {
   lmm_df$date[i] <- strsplit(lmm_df$date[i], "_")[[1]][1]
 }
 
@@ -940,7 +940,7 @@ plot_df_with_vidname <- data.frame(
   videoname = video_list
 )
 
-for (i in 1:length(plot_df_with_vidname$videoname)) {
+for (i in seq_along(plot_df_with_vidname$videoname)) {
   plot_df_with_vidname$videoname[i] <- strsplit(plot_df_with_vidname$videoname[i], "_")[[1]][1]
 }
 

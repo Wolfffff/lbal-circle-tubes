@@ -183,6 +183,19 @@ soc_sol_df <- interaction_df[interaction_df$"Social Contrast" == "soc_sol", ]
 sol_sol_df <- interaction_df[interaction_df$"Social Contrast" == "sol_sol", ]
 
 # second, bin the data and store total # of interactions per videos per bin
+process_subset <- function(subset_df, total_bouts_list, i) {
+  for (j in unique(subset_df$`Videoname Prefix`)) {
+    sub_df <- subset_df[subset_df$`Videoname Prefix` == j, ]
+    if (i == 1) {
+      total_bouts_list[[1]] <- append(total_bouts_list[[1]], length(unique(sub_df$Bout)))
+    } else if (i == 2) {
+      total_bouts_list[[2]] <- append(total_bouts_list[[2]], length(unique(sub_df$Bout)))
+    } else {
+      total_bouts_list[[3]] <- append(total_bouts_list[[3]], length(unique(sub_df$Bout)))
+    }
+  }
+}
+
 total_bouts_soc_soc1 <- numeric()
 total_bouts_soc_sol1 <- numeric()
 total_bouts_sol_sol1 <- numeric()
@@ -192,53 +205,15 @@ total_bouts_sol_sol2 <- numeric()
 total_bouts_soc_soc3 <- numeric()
 total_bouts_soc_sol3 <- numeric()
 total_bouts_sol_sol3 <- numeric()
+
 for (i in 1:3) {
-  soc_soc_subset_df <- soc_soc_df[soc_soc_df$Interaction.Frame >= ((i - 1) * 6000), ]
-  soc_soc_subset_df <- soc_soc_subset_df[soc_soc_subset_df$Interaction.Frame < (i * 6000), ]
+  soc_soc_subset_df <- soc_soc_df[soc_soc_df$Interaction.Frame >= ((i - 1) * 6000) & soc_soc_df$Interaction.Frame < (i * 6000), ]
+  soc_sol_subset_df <- soc_sol_df[soc_sol_df$Interaction.Frame >= ((i - 1) * 6000) & soc_sol_df$Interaction.Frame < (i * 6000), ]
+  sol_sol_subset_df <- sol_sol_df[sol_sol_df$Interaction.Frame >= ((i - 1) * 6000) & sol_sol_df$Interaction.Frame < (i * 6000), ]
 
-
-  soc_sol_subset_df <- soc_sol_df[soc_sol_df$Interaction.Frame >= ((i - 1) * 6000), ]
-  soc_sol_subset_df <- soc_sol_subset_df[soc_sol_subset_df$Interaction.Frame < (i * 6000), ]
-
-
-  sol_sol_subset_df <- sol_sol_df[sol_sol_df$Interaction.Frame >= ((i - 1) * 6000), ]
-  sol_sol_subset_df <- sol_sol_subset_df[sol_sol_subset_df$Interaction.Frame < (i * 6000), ]
-
-  for (j in unique(soc_soc_df$`Videoname Prefix`)) {
-    subset_df <- soc_soc_subset_df[soc_soc_subset_df$`Videoname Prefix` == j, ]
-
-    if (i == 1) {
-      total_bouts_soc_soc1 <- append(total_bouts_soc_soc1, length(unique(subset_df$Bout)))
-    } else if (i == 2) {
-      total_bouts_soc_soc2 <- append(total_bouts_soc_soc2, length(unique(subset_df$Bout)))
-    } else {
-      total_bouts_soc_soc3 <- append(total_bouts_soc_soc3, length(unique(subset_df$Bout)))
-    }
-  }
-
-  for (j in unique(soc_sol_df$`Videoname Prefix`)) {
-    subset_df <- soc_sol_subset_df[soc_sol_subset_df$`Videoname Prefix` == j, ]
-
-    if (i == 1) {
-      total_bouts_soc_sol1 <- append(total_bouts_soc_sol1, length(unique(subset_df$Bout)))
-    } else if (i == 2) {
-      total_bouts_soc_sol2 <- append(total_bouts_soc_sol2, length(unique(subset_df$Bout)))
-    } else {
-      total_bouts_soc_sol3 <- append(total_bouts_soc_sol3, length(unique(subset_df$Bout)))
-    }
-  }
-
-  for (j in unique(sol_sol_df$`Videoname Prefix`)) {
-    subset_df <- sol_sol_subset_df[sol_sol_subset_df$`Videoname Prefix` == j, ]
-
-    if (i == 1) {
-      total_bouts_sol_sol1 <- append(total_bouts_sol_sol1, length(unique(subset_df$Bout)))
-    } else if (i == 2) {
-      total_bouts_sol_sol2 <- append(total_bouts_sol_sol2, length(unique(subset_df$Bout)))
-    } else {
-      total_bouts_sol_sol3 <- append(total_bouts_sol_sol3, length(unique(subset_df$Bout)))
-    }
-  }
+  process_subset(soc_soc_subset_df, list(total_bouts_soc_soc1, total_bouts_soc_soc2, total_bouts_soc_soc3), i)
+  process_subset(soc_sol_subset_df, list(total_bouts_soc_sol1, total_bouts_soc_sol2, total_bouts_soc_sol3), i)
+  process_subset(sol_sol_subset_df, list(total_bouts_sol_sol1, total_bouts_sol_sol2, total_bouts_sol_sol3), i)
 }
 
 # third, create box plots

@@ -25,6 +25,18 @@ ovary_plot_df <- master_data %>%
   mutate(Caste = factor(Caste, levels = c("queen", "worker", "solitary")))
 
 
+stats_df <- ovary_plot_df %>%
+  pairwise_t_test(Ovarian.Index ~ Caste, p.adjust.method = "bonferroni")
+
+# Filter out non-significant comparisons
+significant_comparisons <- stats_df %>%
+  filter(p.adj <= 0.05) %>%
+  select(group1, group2)
+
+# Convert to list format for stat_compare_means
+comparisons_list <- split(significant_comparisons, seq(nrow(significant_comparisons)))
+comparisons_list <- lapply(comparisons_list, function(x) as.character(unlist(x)))
+
 # Plot ovarian development per caste with significance annotations
 ovary_plot <- ggplot(ovary_plot_df, aes(x = Caste, y = Ovarian.Index, fill = Caste)) +
   geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.6) +
@@ -35,6 +47,13 @@ ovary_plot <- ggplot(ovary_plot_df, aes(x = Caste, y = Ovarian.Index, fill = Cas
     title = "Ovarian Development per Caste",
     x = "Caste",
     y = "Ovary Development Index"
+  ) +
+  stat_compare_means(
+    method = "t.test",
+    label = "p.signif",
+    comparisons = comparisons_list,
+    hide.ns = TRUE,
+    step.increase = 0.1
   ) +
   SHARED_THEME
 

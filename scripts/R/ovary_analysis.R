@@ -34,7 +34,7 @@ significant_comparisons <- stats_df %>%
   select(group1, group2)
 
 # Convert to list format for stat_compare_means
-comparisons_list <- split(significant_comparisons, seq(nrow(significant_comparisons)))
+comparisons_list <- split(significant_comparisons, seq.int(nrow(significant_comparisons)))
 comparisons_list <- lapply(comparisons_list, function(x) as.character(unlist(x)))
 
 # Plot ovarian development per caste with significance annotations

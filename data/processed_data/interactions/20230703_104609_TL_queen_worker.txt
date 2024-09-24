@@ -1,0 +1,24 @@
+Origin interactor	Destination interactor	Interaction Name	Interaction Frame	Destination Area	Origin Area
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	1084	1100.757804748937	1044.7581422082444
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	1085	913.246148485072	969.3175431395947
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	1650	971.150731228603	1079.930931963381
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	2574	930.0131858232152	889.9469529192309
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	2577	918.7758556508197	795.9150962078731
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	2578	1081.4545603754827	940.588513051
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	3797	899.5308430917497	1020.0829680183449
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	4404	1048.0264762652425	1106.2390840696203
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	4408	953.1348014227838	970.6881744268194
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	4409	940.6628507480843	970.3940163870408
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	4421	946.8090399566771	989.4214192775015
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	4427	970.3344829365734	764.0858419354049
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	5408	933.7655221709956	1095.67249808403
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	5409	913.3730227024613	952.988328318102
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	5411	893.9089792575195	944.9138631884622
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	5627	972.600677502074	1086.3795538354016
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	5631	929.3054123874626	1013.4414108025753
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	5632	934.9246316954748	998.1873300255427
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	6844	1267.9315801221621	1012.0486154928005
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7670	899.3064759888778	835.4623064739916
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	14423	1087.3873726346433	1128.2433123722178
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	14849	965.8359632968235	1075.2422818780426
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	15217	959.4916436170203	784.7993228671005

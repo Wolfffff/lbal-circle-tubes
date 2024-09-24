@@ -1,0 +1,26 @@
+Origin interactor	Destination interactor	Interaction Name	Interaction Frame	Destination Area	Origin Area
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7193	970.2437538131798	913.6782572372111
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7327	1020.8100083960272	940.6867390918526
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7328	964.2335276185044	938.6424706524792
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7350	931.7411634259455	1014.9464710335371
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7352	1016.1652188111548	1108.6128293699865
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7357	1005.1821558345009	991.2353170565411
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7358	884.9115017947729	1066.0124953255363
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7359	803.488183365859	1230.2739959113867
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7360	784.481599100461	1206.6169460923763
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7361	975.5559166911968	1282.0866093285058
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7362	891.8654371532504	1295.8257682719134
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7363	1027.1177626888134	966.4590380251117
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7364	922.7095233294076	963.8733190859384
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7368	922.2100210801235	948.7806959141315
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	7375	1001.5601619957615	1034.9794038810924
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	11947	844.9646178621083	937.1843771927153
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	11950	885.774356202931	971.8550461197391
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	11953	910.6630116634834	785.3944126031298
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	11954	898.4386499724412	788.4647262756305
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	11955	882.6241476214338	1076.8886320957765
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	11957	902.1044386520435	902.7634151583088
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	11958	886.1932381695171	967.7214167132586
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	11959	864.136632164404	958.2739359806444
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	11960	898.057758078201	941.1597768863737
+ArUcoTag#black	ArUcoTag#purple	Head_to_Head	12230	904.7409074560455	775.9613555387242

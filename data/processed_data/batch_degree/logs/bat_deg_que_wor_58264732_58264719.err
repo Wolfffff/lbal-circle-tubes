@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "/scratch/gpfs/mw0425/KL_local_23/batch_degree/analyze_network.py", line 45, in <module>
+    df_bouts = groupByBouts(df_onetype)
+  File "/scratch/gpfs/mw0425/KL_local_23/batch_degree/analyze_network.py", line 34, in groupByBouts
+    bouts_dataframe = pd.concat(bouts_list, ignore_index=True)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/util/_decorators.py", line 311, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/core/reshape/concat.py", line 347, in concat
+    op = _Concatenator(
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/core/reshape/concat.py", line 404, in __init__
+    raise ValueError("No objects to concatenate")
+ValueError: No objects to concatenate
+Traceback (most recent call last):
+  File "/scratch/gpfs/mw0425/KL_local_23/batch_degree/analyze_network.py", line 45, in <module>
+    df_bouts = groupByBouts(df_onetype)
+  File "/scratch/gpfs/mw0425/KL_local_23/batch_degree/analyze_network.py", line 34, in groupByBouts
+    bouts_dataframe = pd.concat(bouts_list, ignore_index=True)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/util/_decorators.py", line 311, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/core/reshape/concat.py", line 347, in concat
+    op = _Concatenator(
+  File "/usr/licensed/anaconda3/2022.10/lib/python3.9/site-packages/pandas/core/reshape/concat.py", line 404, in __init__
+    raise ValueError("No objects to concatenate")
+ValueError: No objects to concatenate

@@ -1,0 +1,16 @@
+,Origin interactor,Destination interactor,Interaction Name,Interaction Frame,Destination Area,Origin Area,Bout
+0,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,2077,961.9846342730784,986.6034654671282,1
+1,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,2081,904.9882488400284,984.29752671415,1
+2,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,9040,1047.5702533013248,974.3331467358356,2
+3,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,9274,981.012762584828,948.9800935815466,3
+4,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,9277,921.5814613979786,962.4854100638812,3
+5,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,9278,942.3525497873264,954.1004549111522,3
+6,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,9279,1107.5260299741822,931.4509090388892,3
+7,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,13442,1244.4952712682937,976.8756189734064,4
+8,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,13443,974.910486551924,995.5056834342844,4
+9,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,13444,904.3540421836456,975.2196978037456,4
+10,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,13445,1008.3768177622944,1016.0220691745328,4
+11,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,13446,1109.0426511673718,968.1430912900817,4
+12,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,13448,1013.1943561701512,1039.4801074668885,4
+13,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,13453,1102.5553828382688,948.127161140053,4
+14,ArUcoTag#black,ArUcoTag#purple,Head_to_Head,13454,946.5316381092024,961.1160890823024,4

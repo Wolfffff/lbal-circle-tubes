@@ -1,6 +1,6 @@
-<img src="static/kocher_lab_logo.png" alt="{{ cookiecutter.project_name }} logo" width="50%">
+<img src="static/kocher_lab_logo.png" alt="Kocher Lab logo" width="50%">
 
-## {{ cookiecutter.project_name }}
+## Lasioglossum baleicum Circle Tube Analysis
 
 ## Directory Structure
 
@@ -25,4 +25,4 @@
 
 For any questions or further information, please contact:
 
-  * {{cookiecutter.author_name}}: [{{ cookiecutter.author_email }}](mailto:{{ cookiecutter.author_email }})
+  * Michelle White

@@ -37,8 +37,9 @@ measures <- c("motion_prop", "hth_bouts", "htb_bouts")
 # Loop over each measure to perform analysis and plotting
 for (measure in measures) {
   # Perform Linear Mixed Model (LMM) analysis using lmer
+  # Date is a fixed effect and nest side id is a random intercept effect
   lmm <- lmer(
-    as.formula(paste(measure, "~ contrast + (1 | date ) + (1 | nest_site_id)")),
+    as.formula(paste(measure, "~ contrast * date + (1 + contrast | nest_site_id)")),
     data = lmm_df
   )
 

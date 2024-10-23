@@ -1,0 +1,25 @@
+import glob
+
+target_files = glob.glob("new_configs/*.json")
+
+target_configs = [f.split("new_configs/")[1].split(".json")[0] for f in target_files]
+
+rule all:
+    input:
+        expand(
+            "models/{config}.centered_instance/metrics.val.npz",
+            config = target_configs
+        ),
+
+
+rule run_sleap_train:
+    container:
+        "docker://swwolf/sleap:latest"
+    input:
+        "new_configs/{config}.json",
+    output:
+        "models/{config}.centered_instance/metrics.val.npz",
+    shell:
+        """
+        sleap-train {input} labeled_color_tag_frames_20_x_10_vids_03_to_80_minus_5.pkg.slp --save_viz
+        """

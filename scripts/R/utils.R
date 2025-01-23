@@ -1,7 +1,7 @@
 # utils.R
 
 # Load required packages
-source("scripts/R/constants.R")
+source("constants.R")
 require(stringr)
 require(dplyr)
 require(tidyr)
@@ -39,7 +39,7 @@ install_if_missing(REQUIRED_PACKAGES)
 
 # Function to load master data and filter
 load_master_data <- function(base_dir) {
-  master_data_path <- file.path(base_dir, "LBAL_Master_Data_Sheet.csv")
+  master_data_path <- file.path(base_dir, "LBAL_Master_Data_Sheet_BORIS.csv")
   master_data <- read.csv(master_data_path)
   master_data <- master_data[!(master_data$Remove. == "Yes"), ]
   return(master_data)

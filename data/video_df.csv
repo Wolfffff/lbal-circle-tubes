@@ -3,8 +3,6 @@
 "20230619_105703_TR","queen-queen","E-F"
 "20230619_105703_BR","queen-queen","F-F"
 "20230619_113305_BL","queen-solitary","-F"
-"20230619_105703_TL","queen-queen","D-F"
-"20230619_113305_TL","queen-queen","F-F"
 "20230620_100614_TL","solitary-solitary","-B"
 "20230620_102938_BL","solitary-solitary","B-B"
 "20230620_102938_BR","solitary-solitary","A-AB"
@@ -74,4 +72,3 @@
 "20230703_115028_TR","queen-worker","F-F"
 "20230703_104609_TR","worker-worker","F-F"
 "20230703_104609_BL","worker-worker","F-F"
-"20230703_104609_BR","queen-worker","F-F"

@@ -14,6 +14,7 @@ require(reshape2)
 require(emmeans)
 require(ggpubr)
 require(ggplot2)
+require(patchwork)
 
 # Function to check and install missing packages using pak
 install_if_missing <- function(packages) {
@@ -43,6 +44,25 @@ load_master_data <- function(base_dir) {
   master_data <- read.csv(master_data_path)
   master_data <- master_data[!(master_data$Remove. == "Yes"), ]
   return(master_data)
+}
+
+load_behavior_data <- function(base_dir) {
+  behavior_data_path <- file.path(base_dir, "all_LBAL_events.csv")
+  behavior_data <- read.csv(behavior_data_path)
+
+  # Remove unnecessary columns
+  behavior_data <- behavior_data[, c("Subject", "Behavior", "Behavioral.category", "Behavior.type", "Time", "Media.file.name", "Image.index")]
+
+  # Extract videoname from Media.file.name
+  behavior_data$videoname <- str_extract(behavior_data$Media.file.name, "[^/\\\\]+$")
+
+  # Remove ".mp4" from videoname
+  behavior_data$videoname <- str_remove(behavior_data$videoname, ".mp4")
+
+  # Remove Media.file.name column now that we have the videoname
+  behavior_data <- behavior_data[, !(names(behavior_data) %in% "Media.file.name")]
+
+  return(behavior_data)
 }
 
 create_video_df <- function(master_data, output_file) {

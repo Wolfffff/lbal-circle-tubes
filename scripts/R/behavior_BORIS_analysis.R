@@ -8,6 +8,7 @@ invisible(lapply(REQUIRED_PACKAGES, library, character.only = TRUE))
 
 # Load data
 master_data <- load_master_data(BASE_DIR_MASTER_DATA)
+behavior_data <- load_behavior_data(BASE_DIR_MASTER_DATA)
 video_data <- create_video_df(master_data, "../../data/video_df.csv")$video_df
 
 # Extract relevant data columns
@@ -15,16 +16,14 @@ video_list <- video_data$videoname
 contrast_list <- gsub(video_data$contrast, pattern = "-", replacement = "_")
 nest_site_ids <- video_data$nest_ID_contrast
 
-# Generate file paths for velocity data
-video_list_vels <- generate_vels_file_paths(video_list, contrast_list, BASE_DIR_VELOCITIES)
+# Use video data to create new column in behavior data for social contrast
+behavior_data <- behavior_data %>%
+  left_join(video_data, by = "videoname")
 
-# Calculate motion proportions
-motion_prop_list <- calculate_motion_proportion(video_list_vels)
-
-# Load bout counts data (HTH and HTB)
-bout_counts <- load_bout_counts(video_list, contrast_list, BASE_DIR_BATCH_DEGREE)
-hth_bout_list <- bout_counts$hth_bouts
-htb_bout_list <- bout_counts$htb_bouts
+# Group behavior data by social contrast, then by behavioral category
+behavior_data_grouped <- behavior_data %>%
+  group_by(Behavioral.category, contrast) %>%
+  summarise(count = n())
 
 # Prepare data for linear mixed model (LMM) analysis
 lmm_df <- prepare_lmm_data(
@@ -39,7 +38,7 @@ for (measure in measures) {
   # Perform Linear Mixed Model (LMM) analysis using lmer
   # Date is a fixed effect and nest side id is a random intercept effect
   lmm <- lmer(
-    as.formula(paste(measure, "~ contrast * date + (1 + contrast | nest_site_id)")),
+    as.formula(paste(measure, "~ contrast + date + (1 | nest_site_id)")),
     data = lmm_df
   )
 
@@ -89,6 +88,6 @@ for (measure in measures) {
   print(emm_plot)
 
   # Save the plot as a file
-  plot_filename <- paste0("figures/emm_", measure, ".jpeg")
+  plot_filename <- paste0("../../figures/emm_", measure, ".jpeg")
   ggsave(plot_filename, emm_plot, width = 8, height = 6, dpi = 300)
 }

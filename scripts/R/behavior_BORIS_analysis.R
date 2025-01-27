@@ -29,15 +29,6 @@ avoidant_list <- behavior_data_grouped %>% filter(Behavioral.category == "Avoida
 neutral_list <- behavior_data_grouped %>% filter(Behavioral.category == "Neutral") %>% pull(count)
 cooperative_list <- behavior_data_grouped %>% filter(Behavioral.category == "Tolerant/Cooperative") %>% pull(count)
 
-# Use video data to create new column in behavior data for social contrast
-behavior_data <- behavior_data %>%
-  left_join(video_data, by = "videoname")
-
-# Re-group behavior data by social contrast, then by behavioral category
-behavior_data_grouped <- behavior_data %>%
-  group_by(Behavioral.category, contrast) %>%
-  summarise(count = n())
-
 # Prepare data for linear mixed model (LMM) analysis
 lmm_df <- prepare_lmm_data(
   aggressive_list, avoidant_list, neutral_list, cooperative_list, contrast_list, video_list, nest_site_ids

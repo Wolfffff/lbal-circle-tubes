@@ -11,27 +11,44 @@ master_data <- load_master_data(BASE_DIR_MASTER_DATA)
 behavior_data <- load_behavior_data(BASE_DIR_MASTER_DATA)
 video_data <- create_video_df(master_data, "../../data/video_df.csv")$video_df
 
+# Sort video_data by videoname to match with grouped behavior_data later
+video_data <- video_data[order(video_data$videoname), ]
+
 # Extract relevant data columns
 video_list <- video_data$videoname
 contrast_list <- gsub(video_data$contrast, pattern = "-", replacement = "_")
 nest_site_ids <- video_data$nest_ID_contrast
 
+behavior_data_grouped <- behavior_data %>%
+  group_by(videoname, Behavioral.category) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  complete(videoname, Behavioral.category, fill = list(count = 0))
+
+aggressive_list <- behavior_data_grouped %>% filter(Behavioral.category == "Aggressive") %>% pull(count)
+avoidant_list <- behavior_data_grouped %>% filter(Behavioral.category == "Avoidant") %>% pull(count)
+neutral_list <- behavior_data_grouped %>% filter(Behavioral.category == "Neutral") %>% pull(count)
+cooperative_list <- behavior_data_grouped %>% filter(Behavioral.category == "Tolerant/Cooperative") %>% pull(count)
+
 # Use video data to create new column in behavior data for social contrast
 behavior_data <- behavior_data %>%
   left_join(video_data, by = "videoname")
 
-# Group behavior data by social contrast, then by behavioral category
+# Re-group behavior data by social contrast, then by behavioral category
 behavior_data_grouped <- behavior_data %>%
   group_by(Behavioral.category, contrast) %>%
   summarise(count = n())
 
 # Prepare data for linear mixed model (LMM) analysis
 lmm_df <- prepare_lmm_data(
-  motion_prop_list, hth_bout_list, htb_bout_list, contrast_list, video_list, nest_site_ids
+  aggressive_list, avoidant_list, neutral_list, cooperative_list, contrast_list, video_list, nest_site_ids
 )
 
 # Define measures for analysis
-measures <- c("motion_prop", "hth_bouts", "htb_bouts")
+measures <- c("aggr_ints", "avoi_ints", "neut_ints", "coop_ints")
+
+# Create a list to store the plots and initialize a counter
+plotlist <- list()
+i <- 1
 
 # Loop over each measure to perform analysis and plotting
 for (measure in measures) {
@@ -61,22 +78,34 @@ for (measure in measures) {
 
   # Define labels and titles based on the measure
   y_label <- switch(measure,
-    "motion_prop" = "Estimated Motion Proportion",
-    "hth_bouts" = "Estimated HTH Bouts",
-    "htb_bouts" = "Estimated HTB Bouts"
+    "aggr_ints" = "# of Aggressive Interactions",
+    "avoi_ints" = "# of Avoidant Interactions",
+    "neut_ints" = "# of Neutral Interactions",
+    "coop_ints" = "# of Cooperative Interactions"
   )
   plot_title <- switch(measure,
-    "motion_prop" = "Motion Proportion by Contrast",
-    "hth_bouts" = "HTH Bouts by Contrast",
-    "htb_bouts" = "HTB Bouts by Contrast"
+    "aggr_ints" = "Aggressive Interactions by Contrast",
+    "avoi_ints" = "Avoidant Interactions by Contrast",
+    "neut_ints" = "Neutral Interactions by Contrast",
+    "coop_ints" = "Cooperative Interactions by Contrast"
+  )
+
+  y_values <- switch(measure,
+    "aggr_ints" = lmm_df$aggr_ints,
+    "avoi_ints" = lmm_df$avoi_ints,
+    "neut_ints" = lmm_df$neut_ints,
+    "coop_ints" = lmm_df$coop_ints,
   )
 
   # Create plot for the current measure
-  emm_plot <- ggplot(emm_df, aes(x = contrast, y = emmean, color = contrast)) +
-    geom_point(size = 4) +
-    geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.2) +
-    geom_text(aes(label = Letters), vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
+  box_plots <- ggplot(lmm_df, aes(x = contrast, y = y_values, color = contrast)) +
+    geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.6) +
+    geom_jitter(aes(color = contrast), width = 0.15, size = 2, alpha = 0.8) +
+    geom_text(data = emm_df, aes(x = contrast, y = c(60, 60, 60, 60, 60), label = Letters), vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
     scale_color_manual(values = CONTRAST_COLORS) +
+    scale_x_discrete(labels = c("queen_solitary" = "Q-S", "queen_queen" = "Q-Q",
+                                "solitary_solitary" = "S-S", "queen_worker" = "Q-W",
+                                "worker_worker" = "W-W")) +
     labs(
       title = plot_title,
       x = "Social Contrast",
@@ -84,10 +113,11 @@ for (measure in measures) {
     ) +
     SHARED_THEME
 
-  # Display the plot
-  print(emm_plot)
-
-  # Save the plot as a file
-  plot_filename <- paste0("../../figures/emm_", measure, ".jpeg")
-  ggsave(plot_filename, emm_plot, width = 8, height = 6, dpi = 300)
+  # Add the plot to the list of plots and increment the counter
+  plotlist[[i]] <- box_plots
+  i <- i + 1
 }
+
+# Save the plot to the specified directory
+whole_plot <- (plotlist[[1]] | plotlist[[2]]) / (plotlist[[3]] | plotlist[[4]])
+ggsave("../../figures/emm_interaction_counts.jpeg", whole_plot, width = 8, height = 6, dpi = 300)

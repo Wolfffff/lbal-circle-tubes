@@ -203,11 +203,12 @@ load_bout_counts <- function(video_list, contrast_list, base_dir_bouts) {
 }
 
 # Function to prepare data for linear mixed model
-prepare_lmm_data <- function(motion_prop_list, hth_bout_list, htb_bout_list, contrast_list, video_list, nest_site_ids) {
+prepare_lmm_data <- function(aggressive_list, avoidant_list, neutral_list, cooperative_list, contrast_list, video_list, nest_site_ids) {
   lmm_df <- data.frame(
-    motion_prop = motion_prop_list,
-    hth_bouts = hth_bout_list,
-    htb_bouts = htb_bout_list,
+    aggr_ints = aggressive_list,
+    avoi_ints = avoidant_list,
+    neut_ints = neutral_list,
+    coop_ints = cooperative_list,
     contrast = factor(contrast_list, levels = unique(contrast_list)),
     videoname = video_list,
     nest_site_id = nest_site_ids

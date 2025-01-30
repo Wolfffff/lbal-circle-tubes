@@ -63,13 +63,12 @@ for (measure in measures) {
       hide.ns = TRUE,
       step.increase = 0.1
     ) +
-    scale_y_continuous(expand = expansion(mult = c(0.05, 0.2))) +  # Add more space above the plot
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.2))) + # Add more space above the plot
     SHARED_THEME
 
   # Add the plot to the list of plots and increment the counter
   plotlist[[i]] <- morpho_plot
   i <- i + 1
-
 }
 
 # Save the plot to the specified directory

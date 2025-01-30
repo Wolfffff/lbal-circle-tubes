@@ -26,12 +26,6 @@ behavior_data_grouped <- behavior_data %>%
   summarise(count = n(), .groups = "drop") %>%
   complete(videoname, Behavioral.category, fill = list(count = 0))
 
-<<<<<<< HEAD
-aggressive_list <- behavior_data_grouped %>% filter(Behavioral.category == "Aggressive") %>% pull(count)
-avoidant_list <- behavior_data_grouped %>% filter(Behavioral.category == "Avoidant") %>% pull(count)
-neutral_list <- behavior_data_grouped %>% filter(Behavioral.category == "Neutral") %>% pull(count)
-cooperative_list <- behavior_data_grouped %>% filter(Behavioral.category == "Tolerant/Cooperative") %>% pull(count)
-=======
 # Extract interaction duration using START and STOP times
 behavior_data_grouped <- behavior_data %>%
   arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
@@ -56,7 +50,6 @@ neutral_list <- behavior_data_grouped %>%
 cooperative_list <- behavior_data_grouped %>%
   filter(Behavioral.category == "Tolerant/Cooperative") %>%
   pull(count)
->>>>>>> 74aa1594b89b3502637e2d372f1710a6652e7795
 
 # Prepare data for linear mixed model (LMM) analysis
 lmm_df <- prepare_lmm_data(
@@ -143,110 +136,6 @@ for (measure in measures) {
 # Save the plot to the specified directory
 whole_plot <- (plotlist[[1]] | plotlist[[2]]) / (plotlist[[3]] | plotlist[[4]])
 ggsave("../../figures/emm_interaction_counts.jpeg", whole_plot, width = 8, height = 6, dpi = 300)
-
-### Duration Analysis Here ###*****************************************************************************************************
-
-# Extract interaction duration using START and STOP times
-behavior_data_grouped <- behavior_data %>%
-  arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
-  mutate(
-    next_time = lead(Time),
-    Duration = next_time - Time
-  ) %>%
-  filter(Behavior.type == "START") %>%
-  group_by(videoname, Behavioral.category) %>%
-  summarise(avg_duration = mean(Duration), .groups = "drop") %>%
-  complete(videoname, Behavioral.category, fill = list(avg_duration = 0))
-
-aggressive_list <- behavior_data_grouped %>% filter(Behavioral.category == "Aggressive") %>% pull(avg_duration)
-avoidant_list <- behavior_data_grouped %>% filter(Behavioral.category == "Avoidant") %>% pull(avg_duration)
-neutral_list <- behavior_data_grouped %>% filter(Behavioral.category == "Neutral") %>% pull(avg_duration)
-cooperative_list <- behavior_data_grouped %>% filter(Behavioral.category == "Tolerant/Cooperative") %>% pull(avg_duration)
-
-# Prepare data for linear mixed model (LMM) analysis
-lmm_df <- prepare_lmm_data(
-  aggressive_list, avoidant_list, neutral_list, cooperative_list, contrast_list, video_list, nest_site_ids
-)
-
-# Define measures for analysis
-measures <- c("aggr_ints", "avoi_ints", "neut_ints", "coop_ints")
-
-# Create a list to store the plots and initialize a counter
-plotlist <- list()
-i <- 1
-
-# Loop over each measure to perform analysis and plotting
-for (measure in measures) {
-  # Perform Linear Mixed Model (LMM) analysis using lmer
-  # Date is a fixed effect and nest side id is a random intercept effect
-  lmm <- lmer(
-    as.formula(paste(measure, "~ contrast + date + (1 | nest_site_id)")),
-    data = lmm_df
-  )
-
-  # Output ANOVA results using car::Anova for lmer objects
-  cat("\nANOVA for", measure, ":\n")
-  print(car::Anova(lmm))
-
-  # Calculate estimated marginal means (EMMs) and pairwise contrasts
-  emmeans_result <- emmeans(lmm, ~contrast)
-  pairwise_contrasts <- pairs(emmeans_result, adjust = "sidak")
-
-  # Output pairwise comparisons
-  cat("\nPairwise Comparisons for", measure, ":\n")
-  print(summary(pairwise_contrasts, infer = TRUE))
-
-  # Generate compact letter display (CLD) for significance
-  cld_result <- cld(emmeans_result, Letters = letters, adjust = "sidak")
-  emm_df <- as.data.frame(emmeans_result)
-  emm_df$Letters <- cld_result$.group
-
-  # Define labels and titles based on the measure
-  y_label <- switch(measure,
-    "aggr_ints" = "Avg Dur. of Aggressive Ints (s)",
-    "avoi_ints" = "Avg Dur. of Avoidant Ints (s)",
-    "neut_ints" = "Avg Dur. of Neutral Ints (s)",
-    "coop_ints" = "Avg Dur. of Cooperative Ints (s)"
-  )
-  plot_title <- switch(measure,
-    "aggr_ints" = "Aggressive Interactions by Contrast",
-    "avoi_ints" = "Avoidant Interactions by Contrast",
-    "neut_ints" = "Neutral Interactions by Contrast",
-    "coop_ints" = "Cooperative Interactions by Contrast"
-  )
-
-  y_values <- switch(measure,
-    "aggr_ints" = lmm_df$aggr_ints,
-    "avoi_ints" = lmm_df$avoi_ints,
-    "neut_ints" = lmm_df$neut_ints,
-    "coop_ints" = lmm_df$coop_ints,
-  )
-
-  # Create plot for the current measure
-  box_plots <- ggplot(lmm_df, aes(x = contrast, y = y_values, color = contrast)) +
-    geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.6) +
-    geom_jitter(aes(color = contrast), width = 0.15, size = 2, alpha = 0.8) +
-    geom_text(data = emm_df, aes(x = contrast, y = rep(60, 5), label = Letters), vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
-    ylim(0, 125) +
-    scale_color_manual(values = CONTRAST_COLORS) +
-    scale_x_discrete(labels = c("queen_solitary" = "Q-S", "queen_queen" = "Q-Q",
-                                "solitary_solitary" = "S-S", "queen_worker" = "Q-W",
-                                "worker_worker" = "W-W")) +
-    labs(
-      title = plot_title,
-      x = "Social Contrast",
-      y = y_label
-    ) +
-    SHARED_THEME
-
-  # Add the plot to the list of plots and increment the counter
-  plotlist[[i]] <- box_plots
-  i <- i + 1
-}
-
-# Save the plot to the specified directory
-whole_plot <- (plotlist[[1]] | plotlist[[2]]) / (plotlist[[3]] | plotlist[[4]])
-ggsave("../../figures/emm_interaction_durations.jpeg", whole_plot, width = 8, height = 6, dpi = 300)
 
 ### Individual Analysis Here ###*****************************************************************************************************
 # Extract interactions counts for individuals

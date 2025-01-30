@@ -4,11 +4,11 @@ target_files = glob.glob("new_configs/*.json")
 
 target_configs = [f.split("new_configs/")[1].split(".json")[0] for f in target_files]
 
+
 rule all:
     input:
         expand(
-            "models/{config}.centered_instance/metrics.val.npz",
-            config = target_configs
+            "models/{config}.centered_instance/metrics.val.npz", config=target_configs
         ),
 
 

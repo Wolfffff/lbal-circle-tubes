@@ -26,27 +26,22 @@ behavior_data_grouped <- behavior_data %>%
   summarise(count = n(), .groups = "drop") %>%
   complete(videoname, Behavioral.category, fill = list(count = 0))
 
-<<<<<<< HEAD
-aggressive_list <- behavior_data_grouped %>% filter(Behavioral.category == "Aggressive") %>% pull(count)
-avoidant_list <- behavior_data_grouped %>% filter(Behavioral.category == "Avoidant") %>% pull(count)
-neutral_list <- behavior_data_grouped %>% filter(Behavioral.category == "Neutral") %>% pull(count)
-cooperative_list <- behavior_data_grouped %>% filter(Behavioral.category == "Tolerant/Cooperative") %>% pull(count)
-=======
-# Extract interaction duration using START and STOP times
-behavior_data_grouped <- behavior_data %>%
-  arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
-  mutate(
-    next_time = lead(Time),
-    Duration = next_time - Time
-  ) %>%
-  filter(Behavior.type == "START") %>%
-  group_by(videoname, Behavioral.category) %>%
-  summarise(avg_duration = mean(Duration), .groups = "drop") %>%
-  complete(videoname, Behavioral.category, fill = list(avg_duration = 0))
+# # Extract interaction duration using START and STOP times
+# behavior_data_grouped <- behavior_data %>%
+#   arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
+#   mutate(
+#     next_time = lead(Time),
+#     Duration = next_time - Time
+#   ) %>%
+#   filter(Behavior.type == "START") %>%
+#   group_by(videoname, Behavioral.category) %>%
+#   summarise(avg_duration = mean(Duration), .groups = "drop") %>%
+#   complete(videoname, Behavioral.category, fill = list(avg_duration = 0))
 
 aggressive_list <- behavior_data_grouped %>%
   filter(Behavioral.category == "Aggressive") %>%
   pull(count)
+
 avoidant_list <- behavior_data_grouped %>%
   filter(Behavioral.category == "Avoidant") %>%
   pull(count)
@@ -56,7 +51,6 @@ neutral_list <- behavior_data_grouped %>%
 cooperative_list <- behavior_data_grouped %>%
   filter(Behavioral.category == "Tolerant/Cooperative") %>%
   pull(count)
->>>>>>> 74aa1594b89b3502637e2d372f1710a6652e7795
 
 # Prepare data for linear mixed model (LMM) analysis
 lmm_df <- prepare_lmm_data(
@@ -118,10 +112,11 @@ for (measure in measures) {
   )
 
   # Create plot for the current measure
-  box_plots <- ggplot(lmm_df, aes(x = contrast, y = y_values, color = contrast)) +
+  box_plots <- ggplot(lmm_df, aes_string(x = "contrast", y = measure, color = "contrast")) +
     geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.6) +
     geom_jitter(aes(color = contrast), width = 0.15, size = 2, alpha = 0.8) +
-    geom_text(data = emm_df, aes(x = contrast, y = rep(30, 5), label = Letters), vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
+    geom_text(data = emm_df, aes(x = contrast, y = rep(30, 5), label = Letters), 
+            vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
     scale_color_manual(values = CONTRAST_COLORS) +
     scale_x_discrete(labels = c(
       "queen_solitary" = "Q-S", "queen_queen" = "Q-Q",
@@ -223,15 +218,17 @@ for (measure in measures) {
   )
 
   # Create plot for the current measure
-  box_plots <- ggplot(lmm_df, aes(x = contrast, y = y_values, color = contrast)) +
+  box_plots <- ggplot(lmm_df, aes_string(x = "contrast", y = measure, color = "contrast")) +
     geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.6) +
     geom_jitter(aes(color = contrast), width = 0.15, size = 2, alpha = 0.8) +
-    geom_text(data = emm_df, aes(x = contrast, y = rep(60, 5), label = Letters), vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
-    ylim(0, 125) +
+    geom_text(data = emm_df, aes(x = contrast, y = rep(30, 5), label = Letters), 
+            vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
     scale_color_manual(values = CONTRAST_COLORS) +
-    scale_x_discrete(labels = c("queen_solitary" = "Q-S", "queen_queen" = "Q-Q",
-                                "solitary_solitary" = "S-S", "queen_worker" = "Q-W",
-                                "worker_worker" = "W-W")) +
+    scale_x_discrete(labels = c(
+      "queen_solitary" = "Q-S", "queen_queen" = "Q-Q",
+      "solitary_solitary" = "S-S", "queen_worker" = "Q-W",
+      "worker_worker" = "W-W"
+    )) +
     labs(
       title = plot_title,
       x = "Social Contrast",

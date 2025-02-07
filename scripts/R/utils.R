@@ -219,6 +219,24 @@ prepare_lmm_data <- function(aggressive_list, avoidant_list, neutral_list, coope
   return(lmm_df)
 }
 
+# Function to prepare data for linear mixed model with additional column
+prepare_lmm_data <- function(aggressive_list, avoidant_list, neutral_list, cooperative_list, all_ints_list, contrast_list, video_list, nest_site_ids) {
+  lmm_df <- data.frame(
+    aggr_ints = aggressive_list,
+    avoi_ints = avoidant_list,
+    neut_ints = neutral_list,
+    coop_ints = cooperative_list,
+    all_ints = all_ints_list,
+    contrast = factor(contrast_list, levels = unique(contrast_list)),
+    videoname = video_list,
+    nest_site_id = nest_site_ids
+  )
+
+  lmm_df$date <- sapply(lmm_df$videoname, function(x) strsplit(x, "_")[[1]][1])
+
+  return(lmm_df)
+}
+
 # Function to save plots
 save_plot <- function(filename, plot_object, width = 8, height = 6) {
   ggsave(filename, plot = plot_object, width = width, height = height)

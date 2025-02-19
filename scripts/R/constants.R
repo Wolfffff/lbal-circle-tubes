@@ -21,6 +21,7 @@ REQUIRED_PACKAGES <- c(
 # Base directories for file reading
 BASE_DIR_MASTER_DATA <- "../../data"
 BASE_DIR_PROCESSED_DATA <- "../../data/processed_data_BORIS"
+BASE_DIR_FIGURES <- "../../figures/"
 BASE_DIR_VELOCITIES <- file.path(BASE_DIR_PROCESSED_DATA, "velocities")
 BASE_DIR_BATCH_DEGREE <- file.path(BASE_DIR_PROCESSED_DATA, "batch_degree")
 

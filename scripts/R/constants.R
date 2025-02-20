@@ -15,7 +15,8 @@ REQUIRED_PACKAGES <- c(
   "lme4",
   "reshape2",
   "emmeans",
-  "ggpubr"
+  "ggpubr",
+  "Hotelling"
 )
 
 # Base directories for file reading

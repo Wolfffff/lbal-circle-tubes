@@ -38,8 +38,53 @@ install_if_missing <- function(packages) {
 # Run the function to install and load packages
 install_if_missing(REQUIRED_PACKAGES)
 
+plot_hists <- function(video_data) {
+  # First, extract everything before the first underscore in the videoname column
+  video_data$date <- sub("_.+", "", video_data$videoname)
+
+  # Next, create a histogram of the number of videos per day
+  video_data %>%
+    ggplot(aes(x = date)) +
+    geom_bar(stat = "count") +
+    labs(
+      title = "Number of Videos per Day",
+      x = "Date",
+      y = "Count"
+    ) +
+    SHARED_THEME
+
+  ggsave("../../figures/date_hist.jpeg", width = 8, height = 6, dpi = 300)
+
+  # Next, create a histogram of the number of contrasts per day
+  video_data %>%
+    ggplot(aes(x = date, fill = contrast)) +
+    geom_bar(stat = "count", position = "dodge") +
+    labs(
+      title = "Number of Contrasts per Day",
+      x = "Date",
+      y = "Count"
+    ) +
+    SHARED_THEME +
+    theme(legend.position = "top") # need to override the shared theme here
+
+  ggsave("../../figures/date_contrast_hist.jpeg", width = 8, height = 6, dpi = 300)
+
+  # Next, create a histogram of the number of videos per contrast
+  video_data %>%
+    ggplot(aes(x = contrast)) +
+    geom_bar(stat = "count") +
+    labs(
+      title = "Number of Videos per Contrast",
+      x = "Contrast",
+      y = "Count"
+    ) +
+    SHARED_THEME
+
+  ggsave("../../figures/contrast_hist.jpeg", width = 8, height = 6, dpi = 300)
+}
+
 # Function to plot behavioral metrics by contrast
-plot_by_contrast <- function(lmm_df, formula, plot_dir) {
+plot_by_contrast <- function(lmm_df, formula, metric) {
   # Define measures for analysis (these shuold match the column names in lmm_df, see utils.R)
   measures <- c("aggr_ints", "avoi_ints", "neut_ints", "coop_ints", "all_ints")
 
@@ -73,14 +118,31 @@ plot_by_contrast <- function(lmm_df, formula, plot_dir) {
     emm_df <- as.data.frame(emmeans_result)
     emm_df$Letters <- cld_result$.group
 
-    # Define labels, titles, and/or y-values based on the measure
+    # Define labels, titles, and/or y-values based on the measure or metric
     plot_title <- switch(measure,
       "aggr_ints" = "Aggressive Interactions",
-      "avoi_ints" = "Avoidant Interactionst",
+      "avoi_ints" = "Avoidant Interactions",
       "neut_ints" = "Neutral Interactions",
       "coop_ints" = "Cooperative Interactions",
       "all_ints" = "All Interactions"
     )
+
+    fig_title <- switch(metric,
+      "count" = "emm_interaction_counts.jpeg",
+      "log_count" = "emm_interaction_log_counts.jpeg",
+      "avg_duration" = "emm_interaction_avg_durations.jpeg",
+      "tot_duration" = "emm_interaction_tot_durations.jpeg"
+    )
+
+    y_label <- switch(metric,
+      "count" = "# of Interactions",
+      "log_count" = "Log(# of Interactions)",
+      "avg_duration" = "Average Duration (s)",
+      "tot_duration" = "Total Duration (s)"
+    )
+
+    # Determine the directory and title for the final plot
+    fig_dir <- paste0(BASE_DIR_FIGURES, fig_title)
 
     # Create plot for the current measure
     box_plots <- ggplot(lmm_df, aes_string(x = "contrast", y = measure, color = "contrast")) +
@@ -97,7 +159,7 @@ plot_by_contrast <- function(lmm_df, formula, plot_dir) {
       labs(
         title = plot_title,
         x = "Social Contrast",
-        y = "# of Interacions"
+        y = y_label
       ) +
       SHARED_THEME
 
@@ -108,13 +170,94 @@ plot_by_contrast <- function(lmm_df, formula, plot_dir) {
 
   # Save the plot to the specified directory
   whole_plot <- (plotlist[[1]] | plotlist[[2]]) / (plotlist[[3]] | plotlist[[4]]) / plotlist[[5]]
-  ggsave(plot_dir, whole_plot, width = 8, height = 6, dpi = 300)
-  
+  ggsave(fig_dir, whole_plot, width = 8, height = 6, dpi = 300)
+
 }
 
 # Function to plot behavioral metrics by caste
-plot_by_caste <- function(behavior_data_grouped, plot_dir) {
+plot_by_caste <- function(data_df, metric, plot_dir) {
 
+  measures <- unique(data_df$Behavioral.category)
 
+  # Create a list to store the plots and initialize a counter
+  plotlist <- list()
+  i <- 1
 
+  for (measure in measures) {
+    # Prepare the data: filter missing values, select relevant columns, and factorize the "Caste" variable
+    plot_df <- data_df %>%
+      filter(Behavioral.category == measure) %>%
+      mutate(Caste = factor(Caste, levels = c("queen", "worker", "solitary")))
+
+    # Conduct pairwise t-tests between groups and adjust p-values using the Bonferroni method
+    stats_df <- pairwise.t.test(plot_df[[metric]], plot_df$Caste, p.adjust.method = "bonferroni")
+
+    # Filter out non-significant comparisons and select only significant group pairs
+    significant_comparisons <- tidy(stats_df) %>%
+      filter(p.value <= 0.05) %>%
+      select(group1, group2)
+
+    # Convert the filtered comparisons into a list format suitable for stat_compare_means
+    comparisons_list <- if (nrow(significant_comparisons > 0)) {
+      lapply(
+        split(significant_comparisons, seq.int(nrow(significant_comparisons))),
+        function(x) as.character(unlist(x))
+      )
+    } else {
+      list()
+    }
+
+    # Define labels, titles, and/or y-values based on the measure or metric
+    plot_title <- switch(measure,
+      "Aggressive" = "Aggressive Interactions",
+      "Avoidant" = "Avoidant Interactions",
+      "Neutral" = "Neutral Interactions",
+      "Tolerant/Cooperative" = "Cooperative Interactions",
+      "All Interactions" = "All Interactions"
+    )
+
+    fig_title <- switch(metric,
+      "count" = "individual_counts_signif.jpeg",
+      "avg_duration" = "individual_avg_durations_signif.jpeg",
+      "tot_duration" = "individual_tot_durations_signif.jpeg"
+    )
+
+    y_label <- switch(metric,
+      "count" = "# of Interactions",
+      "avg_duration" = "Average Duration (s)",
+      "tot_duration" = "Total Duration (s)"
+    )
+
+    # Determine the directory and title for the final plot
+    fig_dir <- paste0(BASE_DIR_FIGURES, fig_title)
+
+    # Create a plot for number of interactions per caste with significance annotations
+    box_plots <- ggplot(plot_df, aes(x = Caste, y = !!sym(metric), fill = Caste)) +
+      geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.6) +
+      geom_jitter(aes(color = Caste), width = 0.15, size = 2, alpha = 0.8) +
+      scale_fill_manual(values = CASTE_COLORS) +
+      scale_color_manual(values = CASTE_COLORS) +
+      labs(
+        title = plot_title,
+        x = "Caste",
+        y = y_label
+      ) +
+      stat_compare_means(
+        method = "t.test",
+        label = "p.signif",
+        comparisons = comparisons_list,
+        hide.ns = TRUE,
+        step.increase = 0.1
+      ) +
+      scale_y_continuous(expand = expansion(mult = c(0.05, 0.2))) + # Add more space above the plot
+      SHARED_THEME
+
+    # Add the plot to the list of plots and increment the counter
+    plotlist[[i]] <- box_plots
+    i <- i + 1
+  }
+
+  # Save the plot to the specified directory
+  whole_plot <- (plotlist[[1]] | plotlist[[2]]) / (plotlist[[3]] | plotlist[[4]]) / plotlist[[5]]
+  ggsave(fig_dir, whole_plot, width = 8, height = 6, dpi = 300)
 }

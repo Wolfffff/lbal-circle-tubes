@@ -202,18 +202,17 @@ load_bout_counts <- function(video_list, contrast_list, base_dir_bouts) {
   return(list(hth_bouts = hth_bout_list, htb_bouts = htb_bout_list))
 }
 
-# Function to prepare data for linear mixed model with additional column "all_ints"
-prepare_lmm_data <- function(aggressive_list, avoidant_list, neutral_list, cooperative_list, all_ints_list, contrast_list, video_list, nest_site_ids) {
+# only require one list, rest are optional
+prepare_lmm_data <- function(behavior_lists, contrast_list, video_list, nest_site_ids) {
   lmm_df <- data.frame(
-    aggr_ints = aggressive_list,
-    avoi_ints = avoidant_list,
-    neut_ints = neutral_list,
-    coop_ints = cooperative_list,
-    all_ints = all_ints_list,
     contrast = factor(contrast_list, levels = unique(contrast_list)),
     videoname = video_list,
     nest_site_id = nest_site_ids
   )
+
+  for (i in seq_along(behavior_lists)) {
+    lmm_df[[paste0("beh_", i)]] <- behavior_lists[[i]]
+  }
 
   lmm_df$date <- sapply(lmm_df$videoname, function(x) strsplit(x, "_")[[1]][1])
 

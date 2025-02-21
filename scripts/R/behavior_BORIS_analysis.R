@@ -32,8 +32,36 @@ count_data <- behavior_data %>%
   dplyr::summarise(count = n(), .groups = "drop") %>%
   complete(videoname, Behavioral.category, fill = list(count = 0))
 
-log_count_data <- count_data %>%
-  mutate(log_count = log(count + 1e-6))
+# Add a behavioral category for all interactions summing counts by videoname
+count_data_all <- count_data %>%
+  group_by(videoname) %>%
+  dplyr::summarise(count = sum(count), .groups = "drop") %>%
+  left_join(count_data %>%
+              select(videoname, Behavioral.category) %>%
+              distinct() %>%
+              group_by(videoname) %>%
+              slice_head(n = 1),
+            by = "videoname") %>%
+  mutate(Behavioral.category = "All")
+
+count_data <- bind_rows(count_data, count_data_all)
+
+# Make a scatter plot of aggressive versus cooperative counts by videoname
+count_data %>%
+  filter(Behavioral.category %in% c("Aggressive", "Tolerant/Cooperative")) %>%
+  pivot_wider(names_from = Behavioral.category, values_from = count) %>%
+  ggplot(aes(x = Aggressive, y = `Tolerant/Cooperative`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  stat_cor(method = "pearson", color = "red", label.x.npc = 0.5, label.y.npc = 0.9) +
+  labs(
+    title = "Aggressive vs. Cooperative Counts by Video",
+    x = "Aggressive Interactions",
+    y = "Cooperative Interactions"
+  ) +
+  SHARED_THEME
+
+ggsave("../../figures/agg_coop_scatter.jpeg", width = 8, height = 6, dpi = 300)
 
 avg_duration_data <- behavior_data %>%
   arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
@@ -46,6 +74,20 @@ avg_duration_data <- behavior_data %>%
   dplyr::summarise(avg_duration = mean(Duration), .groups = "drop") %>%
   complete(videoname, Behavioral.category, fill = list(avg_duration = 0))
 
+# Add a behavioral category for all interactions summing counts by videoname
+avg_duration_data_all <- avg_duration_data %>%
+  group_by(videoname) %>%
+  dplyr::summarise(avg_duration = mean(avg_duration), .groups = "drop") %>%
+  left_join(avg_duration_data %>%
+              select(videoname, Behavioral.category) %>%
+              distinct() %>%
+              group_by(videoname) %>%
+              slice_head(n = 1),
+            by = "videoname") %>%
+  mutate(Behavioral.category = "All")
+
+avg_duration_data <- bind_rows(avg_duration_data, avg_duration_data_all)
+
 tot_duration_data <- behavior_data %>%
   arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
   mutate(
@@ -57,40 +99,98 @@ tot_duration_data <- behavior_data %>%
   dplyr::summarise(tot_duration = sum(Duration), .groups = "drop") %>%
   complete(videoname, Behavioral.category, fill = list(tot_duration = 0))
 
-# Combine all three tibbles into one
-combined_data <- log_count_data %>%
-  left_join(avg_duration_data, by = c("videoname", "Behavioral.category")) %>%
-  left_join(tot_duration_data, by = c("videoname", "Behavioral.category"))
+tot_duration_data_all <- tot_duration_data %>%
+  group_by(videoname) %>%
+  dplyr::summarise(tot_duration = sum(tot_duration), .groups = "drop") %>%
+  left_join(tot_duration_data %>%
+              select(videoname, Behavioral.category) %>%
+              distinct() %>%
+              group_by(videoname) %>%
+              slice_head(n = 1),
+            by = "videoname") %>%
+  mutate(Behavioral.category = "All")
 
-metrics <- c("count", "log_count", "avg_duration", "tot_duration")
+tot_duration_data <- bind_rows(tot_duration_data, tot_duration_data_all)
+
+# Combine all three tibbles into one
+combined_data <- count_data %>%
+  left_join(avg_duration_data, by = c("videoname", "Behavioral.category")) %>%
+  left_join(tot_duration_data, by = c("videoname", "Behavioral.category")) %>%
+  mutate(Behavioral.category = case_when(
+    Behavioral.category == "Tolerant/Cooperative" ~ "Cooperative",
+    TRUE ~ Behavioral.category
+  ))
+
+measures <- c("Aggressive", "Avoidant", "Neutral", "Cooperative", "All")
+
+metrics <- c("count", "avg_duration", "tot_duration")
 
 # Extract the values for each metric and plot
 for (metric in metrics) {
+  behavior_lists <- list()
 
-  aggressive_list <- combined_data %>%
-    filter(Behavioral.category == "Aggressive") %>%
-    pull(metric)
-  avoidant_list <- combined_data %>%
-    filter(Behavioral.category == "Avoidant") %>%
-    pull(metric)
-  neutral_list <- combined_data %>%
-    filter(Behavioral.category == "Neutral") %>%
-    pull(metric)
-  cooperative_list <- combined_data %>%
-    filter(Behavioral.category == "Tolerant/Cooperative") %>%
-    pull(metric)
+  for (i in seq_along(measures)) {
+    behavior_list <- combined_data %>%
+      filter(Behavioral.category == measures[i]) %>%
+      pull(metric)
 
-  all_ints_list <- aggressive_list + avoidant_list + neutral_list + cooperative_list
+    behavior_lists[[i]] <- behavior_list
+  }
 
   # Prepare data for linear mixed model (LMM) analysis
   lmm_df <- prepare_lmm_data(
-    aggressive_list, avoidant_list, neutral_list, cooperative_list, all_ints_list, contrast_list, video_list, nest_site_ids
+    behavior_lists, contrast_list, video_list, nest_site_ids
   )
 
   # Define the formula for the linear mixed model (LMM) analysis
-  formula <- "~ contrast + (1 | date)"
+  formula <- " ~ contrast + (1 | date)"
 
-  plot_by_contrast(lmm_df, formula, metric)
+  plot_by_contrast(lmm_df, formula, metric, measures)
+}
+
+# Create plots for each individual behavior
+count_data_by_behavior <- behavior_data %>%
+  group_by(videoname, Behavior) %>%
+  filter(Behavior.type == "START") %>% # Only consider START times for counting
+  dplyr::summarise(count = n(), .groups = "drop") %>%
+  mutate(Behavior = case_when( # get rid of any hyphens or spaces in behavior names
+    Behavior == "c-posture" ~ "cposture",
+    Behavior == "u-turn" ~ "uturn",
+    Behavior == "head-to-body" ~ "headtobody",
+    Behavior == "tandem walking" ~ "tandemwalking",
+    Behavior == "head-to-head" ~ "headtohead",
+    Behavior == "side-by-side" ~ "sidebyside",
+    Behavior == "attempted pass" ~ "attemptedpass",
+    TRUE ~ Behavior
+  )) %>%
+  complete(videoname, Behavior, fill = list(count = 0))
+
+# Define measures for analysis
+measures <- c("cposture", "lunge", "nudge", "bite")
+
+metrics <- c("count")
+
+# Extract the values for each metric and plot
+for (metric in metrics) {
+  behavior_lists <- list()
+
+  for (i in seq_along(measures)) {
+    behavior_list <- count_data_by_behavior %>%
+      filter(Behavior == measures[i]) %>%
+      pull(metric)
+
+    behavior_lists[[i]] <- behavior_list
+  }
+
+  # Prepare data for linear mixed model (LMM) analysis
+  lmm_df <- prepare_lmm_data(
+    behavior_lists, contrast_list, video_list, nest_site_ids
+  )
+
+  # Define the formula for the linear mixed model (LMM) analysis
+  formula <- " ~ contrast + (1 | date)"
+
+  plot_by_contrast(lmm_df, formula, metric, measures)
 }
 
 ### Individual Analysis Here ###**********************************************************************************************************

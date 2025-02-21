@@ -84,25 +84,22 @@ plot_hists <- function(video_data) {
 }
 
 # Function to plot behavioral metrics by contrast
-plot_by_contrast <- function(lmm_df, formula, metric) {
-  # Define measures for analysis (these shuold match the column names in lmm_df, see utils.R)
-  measures <- c("aggr_ints", "avoi_ints", "neut_ints", "coop_ints", "all_ints")
-
+plot_by_contrast <- function(lmm_df, formula, metric, measures) {
   # Create a list to store the plots and initialize a counter
   plotlist <- list()
   i <- 1
 
   # Loop over each measure to perform analysis and plotting
-  for (measure in measures) {
+  for (i in seq_along(measures)) {
     # Perform Linear Mixed Model (LMM) analysis using lmer
     # Date is a fixed effect and nest side id is a random intercept effect
     lmm <- lmer(
-      as.formula(paste(measure, formula)),
+      as.formula(paste0("beh_", i, formula)),
       data = lmm_df
     )
 
     # Output ANOVA results using car::Anova for lmer objects
-    cat("\nANOVA for", measure, ":\n")
+    cat("\nANOVA for", measures[i], ":\n")
     print(car::Anova(lmm))
 
     # Calculate estimated marginal means (EMMs) and pairwise contrasts
@@ -110,7 +107,7 @@ plot_by_contrast <- function(lmm_df, formula, metric) {
     pairwise_contrasts <- pairs(emmeans_result, adjust = "sidak")
 
     # Output pairwise comparisons
-    cat("\nPairwise Comparisons for", measure, ":\n")
+    cat("\nPairwise Comparisons for", measures[i], ":\n")
     print(summary(pairwise_contrasts, infer = TRUE))
 
     # Generate compact letter display (CLD) for significance
@@ -119,33 +116,65 @@ plot_by_contrast <- function(lmm_df, formula, metric) {
     emm_df$Letters <- cld_result$.group
 
     # Define labels, titles, and/or y-values based on the measure or metric
-    plot_title <- switch(measure,
-      "aggr_ints" = "Aggressive Interactions",
-      "avoi_ints" = "Avoidant Interactions",
-      "neut_ints" = "Neutral Interactions",
-      "coop_ints" = "Cooperative Interactions",
-      "all_ints" = "All Interactions"
+    plot_title <- switch(measures[i], # provide all possible options that measures could be!
+      "Aggressive" = "Aggressive Interactions",
+      "Avoidant" = "Avoidant Interactions",
+      "Neutral" = "Neutral Interactions",
+      "Cooperative" = "Cooperative Interactions",
+      "cposture" = "C-Posture Interactions",
+      "lunge" = "Lunge Interactions",
+      "nudge" = "Nudge Interactions",
+      "bite" = "Bite Interactions",
+      "withdraw" = "Withdraw Interactions",
+      "uturn" = "U-Turn Interactions",
+      "back" = "Back Interactions",
+      "headtobody" = "Head-to-Body Interactions",
+      "antennation" = "Antennation Interactions",
+      "tandemwalking" = "Tandem Walking Interactions",
+      "pass" = "Pass Interactions",
+      "headtohead" = "Head-to-Head Interactions",
+      "sidebyside" = "Side-by-Side Interactions",
+      "attemptedpass" = "Attempted Pass Interactions",
     )
 
-    fig_title <- switch(metric,
-      "count" = "emm_interaction_counts.jpeg",
-      "log_count" = "emm_interaction_log_counts.jpeg",
-      "avg_duration" = "emm_interaction_avg_durations.jpeg",
-      "tot_duration" = "emm_interaction_tot_durations.jpeg"
+    fig_metric_title <- switch(metric,
+      "count" = "emm_interaction_counts",
+      "avg_duration" = "emm_interaction_avg_durations",
+      "tot_duration" = "emm_interaction_tot_durations"
+    )
+
+    fig_measure_title <- switch(measures[i],
+      "Aggressive" = "",
+      "Avoidant" = "",
+      "Neutral" = "",
+      "Cooperative" = "",
+      "cposture" = "_aggr",
+      "lunge" = "_aggr",
+      "nudge" = "_aggr",
+      "bite" = "_aggr",
+      "withdraw" = "_avoi",
+      "uturn" = "_avoi",
+      "back" = "_avoi",
+      "headtobody" = "_neut",
+      "antennation" = "_neut",
+      "tandemwalking" = "_neut",
+      "pass" = "_coop",
+      "headtohead" = "_coop",
+      "sidebyside" = "_coop",
+      "attemptedpass" = "_coop",
     )
 
     y_label <- switch(metric,
       "count" = "# of Interactions",
-      "log_count" = "Log(# of Interactions)",
       "avg_duration" = "Average Duration (s)",
       "tot_duration" = "Total Duration (s)"
     )
 
     # Determine the directory and title for the final plot
-    fig_dir <- paste0(BASE_DIR_FIGURES, fig_title)
+    fig_dir <- paste0(BASE_DIR_FIGURES, fig_metric_title, fig_measure_title, ".jpeg")
 
     # Create plot for the current measure
-    box_plots <- ggplot(lmm_df, aes_string(x = "contrast", y = measure, color = "contrast")) +
+    box_plots <- ggplot(lmm_df, aes(x = contrast, y = !!sym(paste0("beh_", i)), color = "contrast")) +
       geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.6) +
       geom_jitter(aes(color = contrast), width = 0.15, size = 2, alpha = 0.8) +
       geom_text(data = emm_df, aes(x = contrast, y = upper.CL, label = Letters), 
@@ -169,7 +198,7 @@ plot_by_contrast <- function(lmm_df, formula, metric) {
   }
 
   # Save the plot to the specified directory
-  whole_plot <- (plotlist[[1]] | plotlist[[2]]) / (plotlist[[3]] | plotlist[[4]]) / plotlist[[5]]
+  whole_plot <- wrap_plots(plotlist, ncol = 2)
   ggsave(fig_dir, whole_plot, width = 8, height = 6, dpi = 300)
 
 }

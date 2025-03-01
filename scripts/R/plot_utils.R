@@ -15,6 +15,7 @@ require(emmeans)
 require(ggpubr)
 require(ggplot2)
 require(patchwork)
+require(ggnewscale)
 
 # Function to check and install missing packages using pak
 install_if_missing <- function(packages) {
@@ -83,11 +84,29 @@ plot_hists <- function(video_data) {
   ggsave("../../figures/contrast_hist.jpeg", width = 8, height = 6, dpi = 300)
 }
 
+plot_scatters <- function(data) {
+  # Make a scatter plot of aggressive versus cooperative counts by videoname
+  data %>%
+    select(videoname, Behavioral.category, count) %>%
+    filter(Behavioral.category %in% c("Aggressive", "Cooperative")) %>%
+    pivot_wider(names_from = Behavioral.category, values_from = count, values_fill = 0) %>%
+    ggplot(aes(x = Aggressive, y = `Cooperative`)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "blue") +
+    stat_cor(method = "pearson", color = "red", label.x.npc = 0.5, label.y.npc = 0.9) +
+    labs(
+      title = "Aggressive vs. Cooperative Counts by Video",
+      x = "Aggressive Interactions",
+      y = "Cooperative Interactions"
+    ) +
+    SHARED_THEME
+
+  ggsave("../../figures/agg_coop_scatter.jpeg", width = 8, height = 6, dpi = 300)
+}
+
 # Function to plot behavioral metrics by contrast
 plot_by_contrast <- function(lmm_df, formula, metric, measures) {
-  # Create a list to store the plots and initialize a counter
   plotlist <- list()
-  i <- 1
 
   # Loop over each measure to perform analysis and plotting
   for (i in seq_along(measures)) {
@@ -115,7 +134,7 @@ plot_by_contrast <- function(lmm_df, formula, metric, measures) {
     emm_df <- as.data.frame(emmeans_result)
     emm_df$Letters <- cld_result$.group
 
-    # Define labels, titles, and/or y-values based on the measure or metric
+    # Define labels and titles based on the measure or metric
     plot_title <- switch(measures[i], # provide all possible options that measures could be!
       "Aggressive" = "Aggressive Interactions",
       "Avoidant" = "Avoidant Interactions",
@@ -140,7 +159,9 @@ plot_by_contrast <- function(lmm_df, formula, metric, measures) {
     fig_metric_title <- switch(metric,
       "count" = "emm_interaction_counts",
       "avg_duration" = "emm_interaction_avg_durations",
-      "tot_duration" = "emm_interaction_tot_durations"
+      "tot_duration" = "emm_interaction_tot_durations",
+      "count_prop" = "emm_interaction_counts_prop",
+      "count_prop_caste" = "emm_interaction_counts_prop_caste"
     )
 
     fig_measure_title <- switch(measures[i],
@@ -167,55 +188,98 @@ plot_by_contrast <- function(lmm_df, formula, metric, measures) {
     y_label <- switch(metric,
       "count" = "# of Interactions",
       "avg_duration" = "Average Duration (s)",
-      "tot_duration" = "Total Duration (s)"
+      "tot_duration" = "Total Duration (s)",
+      "count_prop" = "Proportion of Interactions",
+      "count_prop_caste" = "Proportion of Interactions"
     )
 
     # Determine the directory and title for the final plot
     fig_dir <- paste0(BASE_DIR_FIGURES, fig_metric_title, fig_measure_title, ".jpeg")
 
-    # Create plot for the current measure
-    box_plots <- ggplot(lmm_df, aes(x = contrast, y = !!sym(paste0("beh_", i)), color = "contrast")) +
-      geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.6) +
-      geom_jitter(aes(color = contrast), width = 0.15, size = 2, alpha = 0.8) +
-      geom_text(data = emm_df, aes(x = contrast, y = upper.CL, label = Letters), 
-              vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
-      scale_color_manual(values = CONTRAST_COLORS) +
-      scale_x_discrete(labels = c(
-        "queen_solitary" = "Q-S", "queen_queen" = "Q-Q",
-        "solitary_solitary" = "S-S", "queen_worker" = "Q-W",
-        "worker_worker" = "W-W"
-      )) +
-      labs(
-        title = plot_title,
-        x = "Social Contrast",
-        y = y_label
-      ) +
-      SHARED_THEME
+    if (metric == "count_prop_caste") {
+      # Create plot for the current measure
+      box_plots <- ggplot(lmm_df, aes(x = contrast, y = !!sym(paste0("beh_", i)))) +
+        geom_boxplot(aes(color = contrast), alpha = 0.5, outlier.shape = NA, width = 0.6) +
+        scale_color_manual(values = CONTRAST_COLORS, name = "Contrast") +
+        new_scale_color() + 
+        geom_jitter(aes(color = Caste), width = 0.15, size = 2, alpha = 0.8) +
+        scale_color_manual(values = CASTE_COLORS, name = "Caste") +
+        geom_text(data = emm_df, aes(x = contrast, y = upper.CL, label = Letters), 
+                  vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
+        scale_x_discrete(labels = c(
+          "queen_solitary" = "Q-S", "queen_queen" = "Q-Q",
+          "solitary_solitary" = "S-S", "queen_worker" = "Q-W",
+          "worker_worker" = "W-W"
+        )) +
+        labs(
+          title = plot_title,
+          x = "Social Contrast",
+          y = y_label
+        ) +
+        SHARED_THEME
+    } else {
+      # Create plot for the current measure
+      box_plots <- ggplot(lmm_df, aes(x = contrast, y = !!sym(paste0("beh_", i)))) +
+        geom_boxplot(aes(color = contrast), alpha = 0.5, outlier.shape = NA, width = 0.6) +
+        geom_jitter(aes(color = contrast), width = 0.15, size = 2, alpha = 0.8) +
+        scale_color_manual(values = CONTRAST_COLORS) +
+        geom_text(data = emm_df, aes(x = contrast, y = upper.CL, label = Letters), 
+                  vjust = -0.5, hjust = -0.3, size = 5, color = "black") +
+        scale_x_discrete(labels = c(
+          "queen_solitary" = "Q-S", "queen_queen" = "Q-Q",
+          "solitary_solitary" = "S-S", "queen_worker" = "Q-W",
+          "worker_worker" = "W-W"
+        )) +
+        labs(
+          title = plot_title,
+          x = "Social Contrast",
+          y = y_label
+        ) +
+        SHARED_THEME
+    }
 
     # Add the plot to the list of plots and increment the counter
     plotlist[[i]] <- box_plots
-    i <- i + 1
   }
 
   # Save the plot to the specified directory
-  whole_plot <- wrap_plots(plotlist, ncol = 2)
+  whole_plot <- wrap_plots(plotlist, ncol = 2) +
+    plot_layout(
+      guides = "collect"
+    ) &
+    theme(
+      legend.position = "top",
+      legend.justification = "left",
+      legend.key.size = unit(0.5, "lines"),
+      legend.text = element_text(size = 7),
+      legend.direction = "horizontal",
+      legend.spacing.x = unit(0.1, "mm"),
+      legend.spacing.y = unit(0.1, "mm")
+    ) 
+
   ggsave(fig_dir, whole_plot, width = 8, height = 6, dpi = 300)
 
 }
 
 # Function to plot behavioral metrics by caste
-plot_by_caste <- function(data_df, metric, plot_dir) {
-
-  measures <- unique(data_df$Behavioral.category)
-
+plot_by_caste <- function(data, metric, measures) {
   # Create a list to store the plots and initialize a counter
   plotlist <- list()
   i <- 1
 
-  for (measure in measures) {
+  for (j in seq_along(measures)) {
     # Prepare the data: filter missing values, select relevant columns, and factorize the "Caste" variable
-    plot_df <- data_df %>%
-      filter(Behavioral.category == measure) %>%
+    behavior_col <- if ("Behavioral.category" %in% colnames(data)) {
+      "Behavioral.category"
+
+    } else if ("Behavior" %in% colnames(data)) {
+      "Behavior"
+
+    }
+
+    plot_df <- data %>%
+      select(Specimen.ID, !!sym(behavior_col), Caste, metric) %>%
+      filter(!!sym(behavior_col) == measures[[j]]) %>%
       mutate(Caste = factor(Caste, levels = c("queen", "worker", "solitary")))
 
     # Conduct pairwise t-tests between groups and adjust p-values using the Bonferroni method
@@ -236,29 +300,65 @@ plot_by_caste <- function(data_df, metric, plot_dir) {
       list()
     }
 
-    # Define labels, titles, and/or y-values based on the measure or metric
-    plot_title <- switch(measure,
+    # Define labels and titles based on the measure or metric
+    plot_title <- switch(measures[j], # provide all possible options that measures could be!
       "Aggressive" = "Aggressive Interactions",
       "Avoidant" = "Avoidant Interactions",
       "Neutral" = "Neutral Interactions",
-      "Tolerant/Cooperative" = "Cooperative Interactions",
-      "All Interactions" = "All Interactions"
+      "Cooperative" = "Cooperative Interactions",
+      "cposture" = "C-Posture Interactions",
+      "lunge" = "Lunge Interactions",
+      "nudge" = "Nudge Interactions",
+      "bite" = "Bite Interactions",
+      "withdraw" = "Withdraw Interactions",
+      "uturn" = "U-Turn Interactions",
+      "back" = "Back Interactions",
+      "headtobody" = "Head-to-Body Interactions",
+      "antennation" = "Antennation Interactions",
+      "tandemwalking" = "Tandem Walking Interactions",
+      "pass" = "Pass Interactions",
+      "headtohead" = "Head-to-Head Interactions",
+      "sidebyside" = "Side-by-Side Interactions",
+      "attemptedpass" = "Attempted Pass Interactions",
     )
 
-    fig_title <- switch(metric,
-      "count" = "individual_counts_signif.jpeg",
-      "avg_duration" = "individual_avg_durations_signif.jpeg",
-      "tot_duration" = "individual_tot_durations_signif.jpeg"
+    fig_metric_title <- switch(metric,
+      "count" = "individual_counts_signif",
+      "avg_duration" = "individual_avg_durations_signif",
+      "tot_duration" = "individual_tot_durations_signif",
+      "count_prop_caste" = "individual_counts_prop_signif"
+    )
+
+    fig_measure_title <- switch(measures[j],
+      "Aggressive" = "",
+      "Avoidant" = "",
+      "Neutral" = "",
+      "Cooperative" = "",
+      "cposture" = "_aggr",
+      "lunge" = "_aggr",
+      "nudge" = "_aggr",
+      "bite" = "_aggr",
+      "withdraw" = "_avoi",
+      "uturn" = "_avoi",
+      "back" = "_avoi",
+      "headtobody" = "_neut",
+      "antennation" = "_neut",
+      "tandemwalking" = "_neut",
+      "pass" = "_coop",
+      "headtohead" = "_coop",
+      "sidebyside" = "_coop",
+      "attemptedpass" = "_coop",
     )
 
     y_label <- switch(metric,
       "count" = "# of Interactions",
       "avg_duration" = "Average Duration (s)",
-      "tot_duration" = "Total Duration (s)"
+      "tot_duration" = "Total Duration (s)",
+      "count_prop_caste" = "Proportion of Interactions"
     )
 
     # Determine the directory and title for the final plot
-    fig_dir <- paste0(BASE_DIR_FIGURES, fig_title)
+    fig_dir <- paste0(BASE_DIR_FIGURES, fig_metric_title, fig_measure_title, ".jpeg")
 
     # Create a plot for number of interactions per caste with significance annotations
     box_plots <- ggplot(plot_df, aes(x = Caste, y = !!sym(metric), fill = Caste)) +
@@ -278,6 +378,8 @@ plot_by_caste <- function(data_df, metric, plot_dir) {
         hide.ns = TRUE,
         step.increase = 0.1
       ) +
+      geom_vline(xintercept = seq_along(unique(plot_df$Caste)) - 0.5, 
+             color = "gray", linetype = "dashed", linewidth = 0.5) +
       scale_y_continuous(expand = expansion(mult = c(0.05, 0.2))) + # Add more space above the plot
       SHARED_THEME
 
@@ -287,6 +389,6 @@ plot_by_caste <- function(data_df, metric, plot_dir) {
   }
 
   # Save the plot to the specified directory
-  whole_plot <- (plotlist[[1]] | plotlist[[2]]) / (plotlist[[3]] | plotlist[[4]]) / plotlist[[5]]
+  whole_plot <- wrap_plots(plotlist, ncol = 2)
   ggsave(fig_dir, whole_plot, width = 8, height = 6, dpi = 300)
 }

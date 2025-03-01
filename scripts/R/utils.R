@@ -137,73 +137,546 @@ create_video_df <- function(master_data, output_file) {
   return(list(video_df = video_df, contrast_table = contrast_table))
 }
 
-# Function to generate paths for vels.csv files based on video and contrast lists
-generate_vels_file_paths <- function(video_list, contrast_list, base_dir_vels) {
-  video_list_vels <- list()
+choose_plot_type <- function(plot_type) {
 
-  for (i in seq_along(video_list)) {
-    video_list_vels[i] <- file.path(base_dir_vels, paste(video_list[i], contrast_list[i], "vels.csv", sep = "_"))
+  if (plot_type == "regular_categories") {
+
+    measures <- c("Aggressive", "Avoidant", "Neutral", "Cooperative", "All")
+    metrics <- c("count", "avg_duration", "tot_duration")
+    level = "category"
+
+  } else if (plot_type == "proportion_categories") {
+
+    measures <- c("Aggressive", "Avoidant", "Neutral", "Cooperative")
+    metrics <- c("count_prop")
+    level = "category"
+
+  } else if (plot_type == "singles_aggr") {
+
+    measures <- c("cposture", "lunge", "nudge", "bite")
+    metrics <- c("count", "avg_duration", "tot_duration", "count_prop")
+    level = "single"
+
+  } else if (plot_type == "singles_avoi") {
+
+    measures <- c("withdraw", "uturn", "back")
+    metrics <- c("count", "avg_duration", "tot_duration", "count_prop")
+    level = "single"
+
+  } else if (plot_type == "singles_neut") {
+
+    measures <- c("headtobody", "antennation", "tandemwalking")
+    metrics <- c("count", "avg_duration", "tot_duration", "count_prop")
+    level = "single"
+
+  } else if (plot_type == "singles_coop") {
+
+    measures <- c("pass", "headtohead", "sidebyside", "attemptedpass")
+    metrics <- c("count", "avg_duration", "tot_duration", "count_prop")
+    level = "single"
+
+  } else {
+
+    stop("Invalid plot type. Please choose from 'regular_categories', 'proportion_categories', 'singles_aggr', 'singles_avoi', 'singles_neut', or 'singles_coop'.")
+
   }
 
-  return(unlist(video_list_vels))
+  return(list(measures = measures, metrics = metrics, level = level))
 }
 
-# Function to calculate motion proportion (proportion of time bees are moving >= 1 mm/s)
-calculate_motion_proportion <- function(video_list_vels) {
-  motion_prop_list <- list()
+prop_data_pipeline <- function(behavior_data) {                                                                                   
+  # 1. Extract unique subjects and map Caste based on Specimen.ID, Tag_Color, and videoname
+  unique_subjects <- master_data %>%
+    select(Videoname, Specimen.ID, Tag.Color, Caste) %>%
+    distinct(Videoname, Specimen.ID, Tag.Color, Caste) %>%
+    rename(videoname = Videoname, Tag_Color = Tag.Color)
 
-  for (i in seq_along(video_list_vels)) {
-    if (file.exists(video_list_vels[i])) {
-      vels <- read.csv(video_list_vels[i])
+  # 3. Merge behavior data and fill Caste based on unique_subjects
+  count_prop_individual_data <- behavior_data %>%
+    filter(Behavior.type == "START") %>%  # Only consider START times for counting
+    mutate(Tag_Color = case_when(
+      Subject == "Black Tag" ~ "B",
+      Subject == "Purple Tag" ~ "P",
+      TRUE ~ NA_character_
+    )) %>%
+    filter(!is.na(Tag_Color)) %>%  # Remove undirected interactions
+    left_join(master_data, by = c("videoname" = "Videoname", "Tag_Color" = "Tag.Color")) %>%
+    select(Behavioral.category, Specimen.ID, Caste) %>%
+    group_by(Specimen.ID, Behavioral.category, Caste) %>%
+    summarise(count = n(), .groups = "drop") %>%
+    complete(Specimen.ID = unique(master_data$Specimen.ID), 
+            Behavioral.category = unique(behavior_data$Behavioral.category),
+            fill = list(count = 0)) %>%
 
-      # Exclude initial 200 frames
-      vels <- vels[-(1:200), ]
+    # Join with unique_subjects to get the correct Caste values
+    left_join(unique_subjects, by = c("Specimen.ID")) %>%
 
-      total_frames <- nrow(vels)
-      moving_frames <- sum((vels[, 2] * 0.0946 * 20) >= 1, na.rm = TRUE)
+    # Now, fill the Caste based on the join, ensuring the correct Caste is mapped
+    mutate(Caste = coalesce(Caste.y, Caste.x)) %>%  # Prefer Caste from the join over initial values
+    select(-Caste.x, -Caste.y) %>%  # Remove duplicate columns
 
-      motion_prop_list[i] <- moving_frames / total_frames
-    } else {
-      motion_prop_list[i] <- NA
-    }
+    # Calculate count_prop
+    group_by(Specimen.ID) %>%
+    mutate(count_prop_caste = ifelse(sum(count) == 0, 0, count / sum(count))) %>%
+    
+    # Adjust Behavioral.category values
+    mutate(Behavioral.category = case_when(
+      Behavioral.category == "Tolerant/Cooperative" ~ "Cooperative",
+      TRUE ~ Behavioral.category
+    )) %>%
+    select(-count, -Tag_Color) %>%
+    ungroup()
+
+  return(count_prop_individual_data)
+
+}
+
+contrast_data_pipeline <- function(behavior_data, level) {
+  # if level is "category", then we are looking at behavioral categories
+  if (level == "category") {
+    # Extract counts and durations for each social contrast
+    count_data <- behavior_data %>%
+      group_by(videoname, Behavioral.category) %>%
+      filter(Behavior.type == "START") %>% # Only consider START times for counting
+      dplyr::summarise(count = n(), .groups = "drop") %>%
+      complete(videoname, Behavioral.category, fill = list(count = 0))
+
+    count_prop_data <- count_data %>%
+      group_by(videoname) %>%
+      mutate(count_prop = count / sum(count)) %>%
+      ungroup() %>%
+      complete(videoname, Behavioral.category, fill = list(count_prop = 0))
+
+    # Add a behavioral category for all interactions summing counts by videoname
+    count_data_all <- count_data %>%
+      group_by(videoname) %>%
+      dplyr::summarise(count = sum(count), .groups = "drop") %>%
+      left_join(count_data %>%
+                  select(videoname, Behavioral.category) %>%
+                  distinct() %>%
+                  group_by(videoname) %>%
+                  slice_head(n = 1),
+                by = "videoname") %>%
+      mutate(Behavioral.category = "All")
+
+    count_data <- bind_rows(count_data, count_data_all)
+
+    avg_duration_data <- behavior_data %>%
+      arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
+      mutate(
+        next_time = lead(Time),
+        Duration = next_time - Time
+      ) %>%
+      filter(Behavior.type == "START") %>%
+      group_by(videoname, Behavioral.category) %>%
+      dplyr::summarise(avg_duration = mean(Duration), .groups = "drop") %>%
+      complete(videoname, Behavioral.category, fill = list(avg_duration = 0))
+
+    # Add a behavioral category for all interactions summing counts by videoname
+    avg_duration_data_all <- avg_duration_data %>%
+      group_by(videoname) %>%
+      dplyr::summarise(avg_duration = mean(avg_duration), .groups = "drop") %>%
+      left_join(avg_duration_data %>%
+                  select(videoname, Behavioral.category) %>%
+                  distinct() %>%
+                  group_by(videoname) %>%
+                  slice_head(n = 1),
+                by = "videoname") %>%
+      mutate(Behavioral.category = "All")
+
+    avg_duration_data <- bind_rows(avg_duration_data, avg_duration_data_all)
+
+    tot_duration_data <- behavior_data %>%
+      arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
+      mutate(
+        next_time = lead(Time),
+        Duration = next_time - Time
+      ) %>%
+      filter(Behavior.type == "START") %>%
+      group_by(videoname, Behavioral.category) %>%
+      dplyr::summarise(tot_duration = sum(Duration), .groups = "drop") %>%
+      complete(videoname, Behavioral.category, fill = list(tot_duration = 0))
+
+    tot_duration_data_all <- tot_duration_data %>%
+      group_by(videoname) %>%
+      dplyr::summarise(tot_duration = sum(tot_duration), .groups = "drop") %>%
+      left_join(tot_duration_data %>%
+                  select(videoname, Behavioral.category) %>%
+                  distinct() %>%
+                  group_by(videoname) %>%
+                  slice_head(n = 1),
+                by = "videoname") %>%
+      mutate(Behavioral.category = "All")
+
+    tot_duration_data <- bind_rows(tot_duration_data, tot_duration_data_all)
+
+    # Combine all three tibbles into one
+    combined_data <- count_data %>%
+      left_join(avg_duration_data, by = c("videoname", "Behavioral.category")) %>%
+      left_join(tot_duration_data, by = c("videoname", "Behavioral.category")) %>%
+      left_join(count_prop_data, by = c("videoname", "Behavioral.category", "count")) %>%
+      complete(videoname, Behavioral.category, fill = list(count_prop = 0)) %>%
+      mutate(Behavioral.category = case_when(
+        Behavioral.category == "Tolerant/Cooperative" ~ "Cooperative",
+        TRUE ~ Behavioral.category
+      ))
+
+    # if level is "category", then we are looking at behaviors
+  } else if (level == "single") {
+    # Create plots for each individual behavior
+    count_data <- behavior_data %>%
+      group_by(videoname, Behavior) %>%
+      filter(Behavior.type == "START") %>% # Only consider START times for counting
+      dplyr::summarise(count = n(), .groups = "drop") %>%
+      mutate(Behavior = case_when( # get rid of any hyphens or spaces in behavior names
+        Behavior == "c-posture" ~ "cposture",
+        Behavior == "u-turn" ~ "uturn",
+        Behavior == "head-to-body" ~ "headtobody",
+        Behavior == "tandem walking" ~ "tandemwalking",
+        Behavior == "head-to-head" ~ "headtohead",
+        Behavior == "side-by-side" ~ "sidebyside",
+        Behavior == "attempted pass" ~ "attemptedpass",
+        TRUE ~ Behavior
+      )) %>%
+      complete(videoname, Behavior, fill = list(count = 0))
+
+    avg_duration_data <- behavior_data %>%
+      arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
+      mutate(
+        next_time = lead(Time),
+        Duration = next_time - Time
+      ) %>%
+      filter(Behavior.type == "START") %>%
+      group_by(videoname, Behavior) %>%
+      dplyr::summarise(avg_duration = mean(Duration), .groups = "drop") %>%
+      mutate(Behavior = case_when( # get rid of any hyphens or spaces in behavior names
+        Behavior == "c-posture" ~ "cposture",
+        Behavior == "u-turn" ~ "uturn",
+        Behavior == "head-to-body" ~ "headtobody",
+        Behavior == "tandem walking" ~ "tandemwalking",
+        Behavior == "head-to-head" ~ "headtohead",
+        Behavior == "side-by-side" ~ "sidebyside",
+        Behavior == "attempted pass" ~ "attemptedpass",
+        TRUE ~ Behavior
+      )) %>%
+      complete(videoname, Behavior, fill = list(avg_duration = 0))
+
+    tot_duration_data <- behavior_data %>%
+      arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
+      mutate(
+        next_time = lead(Time),
+        Duration = next_time - Time
+      ) %>%
+      filter(Behavior.type == "START") %>%
+      group_by(videoname, Behavior) %>%
+      dplyr::summarise(tot_duration = sum(Duration), .groups = "drop") %>%
+      mutate(Behavior = case_when( # get rid of any hyphens or spaces in behavior names
+        Behavior == "c-posture" ~ "cposture",
+        Behavior == "u-turn" ~ "uturn",
+        Behavior == "head-to-body" ~ "headtobody",
+        Behavior == "tandem walking" ~ "tandemwalking",
+        Behavior == "head-to-head" ~ "headtohead",
+        Behavior == "side-by-side" ~ "sidebyside",
+        Behavior == "attempted pass" ~ "attemptedpass",
+        TRUE ~ Behavior
+      )) %>%
+      complete(videoname, Behavior, fill = list(tot_duration = 0))
+
+    # Combine all three tibbles into one
+    combined_data <- count_data %>%
+      left_join(avg_duration_data, by = c("videoname", "Behavior")) %>%
+      left_join(tot_duration_data, by = c("videoname", "Behavior"))
   }
 
-  return(unlist(motion_prop_list))
+  return(combined_data)
 }
 
-# Function to load bout counts (head-to-head and head-to-body interactions)
-load_bout_counts <- function(video_list, contrast_list, base_dir_bouts) {
-  hth_bout_list <- numeric()
-  htb_bout_list <- numeric()
+caste_data_pipeline <- function(behavior_data, level) {
 
-  for (i in seq_along(video_list)) {
-    hth_filepath <- file.path(base_dir_bouts, paste(video_list[i], contrast_list[i], "hth_bouts.csv", sep = "_"))
-    htb_filepath <- file.path(base_dir_bouts, paste(video_list[i], contrast_list[i], "htb_bouts.csv", sep = "_"))
+  if (level == "category") {
 
-    # Head-to-head bouts
-    if (file.exists(hth_filepath)) {
-      hth_df <- read.csv(hth_filepath)
-      hth_bouts <- length(unique(hth_df$Bout))
-    } else {
-      hth_bouts <- 0
-    }
-    hth_bout_list <- c(hth_bout_list, hth_bouts)
+    # 1. Extract unique subjects and map Caste based on Specimen.ID, Tag_Color, and videoname
+    unique_subjects <- master_data %>%
+      select(Videoname, Specimen.ID, Tag.Color, Caste) %>%
+      distinct(Videoname, Specimen.ID, Tag.Color, Caste) %>%
+      rename(videoname = Videoname, Tag_Color = Tag.Color)
 
-    # Head-to-body bouts
-    if (file.exists(htb_filepath)) {
-      htb_df <- read.csv(htb_filepath)
-      htb_bouts <- length(unique(htb_df$Bout))
-    } else {
-      htb_bouts <- 0
-    }
-    htb_bout_list <- c(htb_bout_list, htb_bouts)
+    # Extract counts and durations for each caste
+    count_data <- behavior_data %>%
+      filter(Behavior.type == "START") %>%
+      mutate(Tag_Color = case_when(
+        Subject == "Black Tag" ~ "B",
+        Subject == "Purple Tag" ~ "P",
+        TRUE ~ NA_character_
+      )) %>%
+      filter(!is.na(Tag_Color)) %>% # this line gets rid of any un-directed interactions
+      left_join(master_data, by = c("videoname" = "Videoname", "Tag_Color" = "Tag.Color")) %>%
+      select(Subject, Behavioral.category, Specimen.ID, Caste) %>%
+      group_by(Specimen.ID, Behavioral.category, Caste) %>%
+      dplyr::summarise(count = n(), .groups = "drop") %>%
+      complete(Specimen.ID = unique(master_data$Specimen.ID), 
+              Behavioral.category = unique(behavior_data$Behavioral.category),
+              fill = list(count = 0)) %>%
+      group_by(Specimen.ID) %>%
+      fill(Caste, .direction = "downup") %>%
+      # Join with unique_subjects to get the correct Caste values
+      left_join(unique_subjects, by = c("Specimen.ID")) %>%
+
+      # Now, fill the Caste based on the join, ensuring the correct Caste is mapped
+      mutate(Caste = coalesce(Caste.y, Caste.x)) %>%  # Prefer Caste from the join over initial values
+      select(-Caste.x, -Caste.y, -Tag_Color, -videoname) # Remove duplicate columns
+
+    # 3. Merge behavior data and fill Caste based on unique_subjects
+    count_prop_data <- count_data %>%
+
+      group_by(Specimen.ID) %>%
+      mutate(sum_count = sum(count)) %>%  # Calculate total count for Specimen.ID
+      mutate(count_prop_caste = ifelse(sum_count == 0, 0, count / sum_count)) %>%  # Calculate proportions
+      
+      select(-sum_count) %>%
+      ungroup()
+
+    # Add a behavioral category for all interactions summing counts by Specimen ID
+    count_data_all <- count_data %>%
+      group_by(Specimen.ID) %>%
+      dplyr::summarise(count = sum(count), .groups = "drop") %>%
+      left_join(count_data %>%
+                  select(Specimen.ID, Caste) %>%
+                  distinct() %>%
+                  group_by(Specimen.ID) %>%
+                  slice_head(n = 1),
+                by = "Specimen.ID") %>%
+      mutate(Behavioral.category = "All")
+
+    count_data <- bind_rows(count_data, count_data_all)
+
+    avg_duration_data <- behavior_data %>%
+      arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
+      mutate(
+        next_time = lead(Time),
+        Duration = next_time - Time
+      ) %>%
+      filter(Behavior.type == "START") %>%
+      mutate(Tag_Color = case_when(
+        Subject == "Black Tag" ~ "B",
+        Subject == "Purple Tag" ~ "P",
+        TRUE ~ NA_character_
+      )) %>%
+      filter(!is.na(Tag_Color)) %>%
+      left_join(master_data, by = c("videoname" = "Videoname", "Tag_Color" = "Tag.Color")) %>%
+      select(Subject, Behavior, Behavioral.category, Behavior.type, Time, Image.index, videoname, Specimen.ID, Caste, Duration) %>%
+      group_by(Specimen.ID, Behavioral.category, Caste) %>%
+      dplyr::summarise(avg_duration = mean(Duration), .groups = "drop") %>%
+      complete(Specimen.ID = unique(master_data$Specimen.ID), 
+              Behavioral.category = unique(behavior_data$Behavioral.category),
+              fill = list(avg_duration = 0)) %>%
+      group_by(Specimen.ID) %>%
+      fill(Caste, .direction = "downup") %>%
+      # Join with unique_subjects to get the correct Caste values
+      left_join(unique_subjects, by = c("Specimen.ID")) %>%
+
+      # Now, fill the Caste based on the join, ensuring the correct Caste is mapped
+      mutate(Caste = coalesce(Caste.y, Caste.x)) %>%  # Prefer Caste from the join over initial values
+      select(-Caste.x, -Caste.y, -Tag_Color, -videoname) # Remove duplicate columns
+
+    # Add a behavioral category for all interactions summing total duration by Specimen ID
+    avg_duration_data_all <- avg_duration_data %>%
+      group_by(Specimen.ID) %>%
+      dplyr::summarise(avg_duration = sum(avg_duration), .groups = "drop") %>%
+      left_join(avg_duration_data %>%
+                  select(Specimen.ID, Caste) %>%
+                  distinct() %>%
+                  group_by(Specimen.ID) %>%
+                  slice_head(n = 1),
+                by = "Specimen.ID") %>%
+      mutate(Behavioral.category = "All")
+
+    avg_duration_data <- bind_rows(avg_duration_data, avg_duration_data_all)
+
+    tot_duration_data <- behavior_data %>%
+      arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
+      mutate(
+        next_time = lead(Time),
+        Duration = next_time - Time
+      ) %>%
+      filter(Behavior.type == "START") %>%
+      mutate(Tag_Color = case_when(
+        Subject == "Black Tag" ~ "B",
+        Subject == "Purple Tag" ~ "P",
+        TRUE ~ NA_character_
+      )) %>%
+      filter(!is.na(Tag_Color)) %>%
+      left_join(master_data, by = c("videoname" = "Videoname", "Tag_Color" = "Tag.Color")) %>%
+      select(Subject, Behavior, Behavioral.category, Behavior.type, Time, Image.index, videoname, Specimen.ID, Caste, Duration) %>%
+      group_by(Specimen.ID, Behavioral.category, Caste) %>%
+      dplyr::summarise(tot_duration = sum(Duration), .groups = "drop") %>%
+      complete(Specimen.ID = unique(master_data$Specimen.ID), 
+              Behavioral.category = unique(behavior_data$Behavioral.category),
+              fill = list(tot_duration = 0)) %>%
+      group_by(Specimen.ID) %>%
+      fill(Caste, .direction = "downup") %>%
+      # Join with unique_subjects to get the correct Caste values
+      left_join(unique_subjects, by = c("Specimen.ID")) %>%
+
+      # Now, fill the Caste based on the join, ensuring the correct Caste is mapped
+      mutate(Caste = coalesce(Caste.y, Caste.x)) %>%  # Prefer Caste from the join over initial values
+      select(-Caste.x, -Caste.y, -Tag_Color, -videoname) # Remove duplicate columns
+
+    # Add a behavioral category for all interactions summing total duration by Specimen ID
+    tot_duration_data_all <- tot_duration_data %>%
+      group_by(Specimen.ID) %>%
+      dplyr::summarise(tot_duration = sum(tot_duration), .groups = "drop") %>%
+      left_join(tot_duration_data %>%
+                  select(Specimen.ID, Caste) %>%
+                  distinct() %>%
+                  group_by(Specimen.ID) %>%
+                  slice_head(n = 1),
+                by = "Specimen.ID") %>%
+      mutate(Behavioral.category = "All")
+
+    tot_duration_data <- bind_rows(tot_duration_data, tot_duration_data_all)
+
+    # Combine all three tibbles into one
+    combined_data <- count_data %>%
+      left_join(avg_duration_data, by = c("Specimen.ID", "Behavioral.category", "Caste")) %>%
+      left_join(tot_duration_data, by = c("Specimen.ID", "Behavioral.category", "Caste")) %>%
+      left_join(count_prop_data, by = c("Specimen.ID", "Behavioral.category", "Caste", "count")) %>%
+      
+      # Ungroup to avoid grouping issues with complete()
+      ungroup() %>%
+      
+      # Use complete to fill missing combinations of Specimen.ID, Behavioral.category, and Caste
+      complete(Specimen.ID, Behavioral.category, Caste, fill = list(count_prop_caste = 0)) %>%
+      
+      filter(!is.na(count) & !is.na(avg_duration) & !is.na(tot_duration) & !is.na(count_prop_caste)) %>%
+      
+      mutate(Behavioral.category = case_when(
+        Behavioral.category == "Tolerant/Cooperative" ~ "Cooperative",
+        TRUE ~ Behavioral.category
+      ))
+
+
+  } else if (level == "single") {
+
+    # Create plots for each individual behavior
+    count_data <- behavior_data %>%
+      filter(Behavior.type == "START") %>%
+      mutate(Tag_Color = case_when(
+        Subject == "Black Tag" ~ "B",
+        Subject == "Purple Tag" ~ "P",
+        TRUE ~ NA_character_
+      )) %>%
+      filter(!is.na(Tag_Color)) %>% # this line gets rid of any un-directed interactions
+      left_join(master_data, by = c("videoname" = "Videoname", "Tag_Color" = "Tag.Color")) %>%
+      select(Subject, Behavior, Specimen.ID, Caste) %>%
+      group_by(Specimen.ID, Behavior, Caste) %>%
+      dplyr::summarise(count = n(), .groups = "drop") %>%
+      mutate(Behavior = case_when( # get rid of any hyphens or spaces in behavior names
+        Behavior == "c-posture" ~ "cposture",
+        Behavior == "u-turn" ~ "uturn",
+        Behavior == "head-to-body" ~ "headtobody",
+        Behavior == "tandem walking" ~ "tandemwalking",
+        Behavior == "head-to-head" ~ "headtohead",
+        Behavior == "side-by-side" ~ "sidebyside",
+        Behavior == "attempted pass" ~ "attemptedpass",
+        TRUE ~ Behavior
+      )) %>%
+      complete(Specimen.ID, Behavior, fill = list(count = 0)) %>%
+      group_by(Specimen.ID) %>%
+      fill(Caste, .direction = "downup")
+
+    avg_duration_data <- behavior_data %>%
+      arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
+      mutate(
+        next_time = lead(Time),
+        Duration = next_time - Time
+      ) %>%
+      filter(Behavior.type == "START") %>%
+      mutate(Tag_Color = case_when(
+        Subject == "Black Tag" ~ "B",
+        Subject == "Purple Tag" ~ "P",
+        TRUE ~ NA_character_
+      )) %>%
+      filter(!is.na(Tag_Color)) %>% # this line gets rid of any un-directed interactions
+      left_join(master_data, by = c("videoname" = "Videoname", "Tag_Color" = "Tag.Color")) %>%
+      select(Subject, Behavior, Specimen.ID, Caste, Duration) %>%
+      group_by(Specimen.ID, Behavior, Caste) %>%
+      dplyr::summarise(avg_duration = mean(Duration), .groups = "drop") %>%
+      mutate(Behavior = case_when( # get rid of any hyphens or spaces in behavior names
+        Behavior == "c-posture" ~ "cposture",
+        Behavior == "u-turn" ~ "uturn",
+        Behavior == "head-to-body" ~ "headtobody",
+        Behavior == "tandem walking" ~ "tandemwalking",
+        Behavior == "head-to-head" ~ "headtohead",
+        Behavior == "side-by-side" ~ "sidebyside",
+        Behavior == "attempted pass" ~ "attemptedpass",
+        TRUE ~ Behavior
+      )) %>%
+      complete(Specimen.ID, Behavior, fill = list(avg_duration = 0)) %>%
+      group_by(Specimen.ID) %>%
+      fill(Caste, .direction = "downup")
+
+    tot_duration_data <- behavior_data %>%
+      arrange(videoname, Subject, Behavioral.category, Behavior, Time) %>%
+      mutate(
+        next_time = lead(Time),
+        Duration = next_time - Time
+      ) %>%
+      filter(Behavior.type == "START") %>%
+      mutate(Tag_Color = case_when(
+        Subject == "Black Tag" ~ "B",
+        Subject == "Purple Tag" ~ "P",
+        TRUE ~ NA_character_
+      )) %>%
+      filter(!is.na(Tag_Color)) %>% # this line gets rid of any un-directed interactions
+      left_join(master_data, by = c("videoname" = "Videoname", "Tag_Color" = "Tag.Color")) %>%
+      select(Subject, Behavior, Specimen.ID, Caste, Duration) %>%
+      group_by(Specimen.ID, Behavior, Caste) %>%
+      dplyr::summarise(tot_duration = sum(Duration), .groups = "drop") %>%
+      mutate(Behavior = case_when( # get rid of any hyphens or spaces in behavior names
+        Behavior == "c-posture" ~ "cposture",
+        Behavior == "u-turn" ~ "uturn",
+        Behavior == "head-to-body" ~ "headtobody",
+        Behavior == "tandem walking" ~ "tandemwalking",
+        Behavior == "head-to-head" ~ "headtohead",
+        Behavior == "side-by-side" ~ "sidebyside",
+        Behavior == "attempted pass" ~ "attemptedpass",
+        TRUE ~ Behavior
+      )) %>%
+      complete(Specimen.ID, Behavior, fill = list(tot_duration = 0)) %>%
+      group_by(Specimen.ID) %>%
+      fill(Caste, .direction = "downup")
+
+    # Combine all three tibbles into one
+    combined_data <- count_data %>%
+      left_join(avg_duration_data, by = c("Specimen.ID", "Behavior", "Caste")) %>%
+      left_join(tot_duration_data, by = c("Specimen.ID", "Behavior", "Caste"))
+
   }
 
-  return(list(hth_bouts = hth_bout_list, htb_bouts = htb_bout_list))
+  return(combined_data)
+
 }
 
-# only require one list, rest are optional
-prepare_lmm_data <- function(behavior_lists, contrast_list, video_list, nest_site_ids) {
+prepare_lmm_data <- function(data, measures, metric, contrast_list, video_list, nest_site_ids) {
+  behavior_col <- if ("Behavioral.category" %in% colnames(data)) {
+    "Behavioral.category"
+
+  } else if ("Behavior" %in% colnames(data)) {
+    "Behavior"
+
+  }
+
+  behavior_lists <- list()
+
+  for (i in seq_along(measures)) {
+    behavior_list <- data %>%
+      filter(!!sym(behavior_col) == measures[i]) %>%
+      pull(metric)
+
+    behavior_lists[[i]] <- behavior_list
+  }
+
   lmm_df <- data.frame(
     contrast = factor(contrast_list, levels = unique(contrast_list)),
     videoname = video_list,
@@ -219,7 +692,66 @@ prepare_lmm_data <- function(behavior_lists, contrast_list, video_list, nest_sit
   return(lmm_df)
 }
 
-# Function to save plots
-save_plot <- function(filename, plot_object, width = 8, height = 6) {
-  ggsave(filename, plot = plot_object, width = width, height = height)
+prepare_lmm_prop_data <- function(data, measures, metric) {
+  behavior_lists <- list()
+
+  for (i in seq_along(measures)) {
+    behavior_list <- data %>%
+      filter(Behavioral.category == measures[i]) %>%
+      pull(metric)
+
+    behavior_lists[[i]] <- behavior_list
+  }
+
+  # Apply the same logic using distinct() in the final pipeline
+  lmm_df <- data %>%
+    # Add the date column from videoname
+    mutate(date = substr(videoname, 1, 8)) %>%
+    
+    # Group by videoname and create other Specimen.ID based on min and max Specimen.ID within each videoname
+    group_by(videoname) %>%
+    mutate(
+      other_specimen_id = if_else(Specimen.ID == min(Specimen.ID), 
+                                  max(Specimen.ID), min(Specimen.ID)),
+
+      Caste_other = if_else(other_specimen_id == min(Specimen.ID), 
+                            first(Caste), last(Caste))
+    ) %>%
+
+    mutate(
+      contrast = case_when(
+        # Check if current caste is queen and the other specimen is solitary
+        (Caste == "queen" & Caste_other == "solitary") |
+
+        # Check if current caste is solitary and the other specimen is queen
+        (Caste == "solitary" & Caste_other == "queen") ~ "queen_solitary",
+
+        # Check if current caste is queen and the other specimen is worker
+        (Caste == "queen" & Caste_other == "worker") |
+
+        # Check if current caste is worker and the other specimen is queen
+        (Caste == "worker" & Caste_other == "queen") ~ "queen_worker",
+
+        # Other cases (e.g., queen_queen or worker_worker)
+        TRUE ~ paste0(Caste, "_", Caste)
+      )
+    ) %>%
+    ungroup() %>%
+
+    # Remove Behavioral.category column and other unnecessary steps
+    select(-Behavioral.category, -other_specimen_id, -Caste_other, -!!sym(metric)) %>%
+
+    # Group and arrange the final dataframe
+    arrange(Specimen.ID, date) %>%
+ 
+    distinct(Specimen.ID, Caste, date, contrast) %>%
+
+    mutate(Caste = factor(Caste, levels = c("queen", "worker", "solitary")),
+           contrast = factor(contrast, levels = c("queen_queen", "queen_solitary", "queen_worker", "solitary_solitary", "worker_worker")))
+
+  for (i in seq_along(behavior_lists)) {
+    lmm_df[[paste0("beh_", i)]] <- behavior_lists[[i]]
+  }
+
+  return(lmm_df)
 }

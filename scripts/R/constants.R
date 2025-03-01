@@ -15,8 +15,7 @@ REQUIRED_PACKAGES <- c(
   "lme4",
   "reshape2",
   "emmeans",
-  "ggpubr",
-  "Hotelling"
+  "ggpubr"
 )
 
 # Base directories for file reading
@@ -41,13 +40,13 @@ CASTE_COLORS <- c(
   "solitary" = "#355C67"
 )
 
-SHARED_THEME <- theme_minimal() +
-  theme(
+SHARED_THEME <- theme(
+    panel.grid.major = element_line(colour = "gray", linewidth = 0.5),
+    panel.background = element_rect(fill = "white"),
     axis.text.x = element_text(size = 10),
     axis.text.y = element_text(size = 10),
     axis.title.x = element_text(size = 12),
     axis.title.y = element_text(size = 12),
     plot.title = element_text(size = 14, hjust = 0.5),
-    plot.background = element_rect(fill = "white"),
     legend.position = "none"
   )

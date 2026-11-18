@@ -1,5 +1,5 @@
 # NAPS identity (Wolfffff/naps, branch wolf-naps-colortag: brightness tags + 2-bee joint engine)
-naps-track @ git+https://github.com/Wolfffff/naps.git@bef2a06e09fb5d5fc5e5c494bbc893d9f31c132f
+naps-track @ git+https://github.com/Wolfffff/naps.git@c5ed68fa0fdb9896538fa400d23d7c06f99a8457
 opencv-contrib-python-headless==4.13.0.92
 sleap-io==0.9.5
 pandas

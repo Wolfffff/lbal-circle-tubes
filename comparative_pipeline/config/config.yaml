@@ -5,8 +5,6 @@
 env:
   sleap: .venv-sleap/bin         # sleap-nn 0.3.5 (envs/setup.sh builds all three)
   naps: .venv-naps/bin           # NAPS (Wolfffff/naps wolf-naps-colortag): naps-track, naps-color-decodes
-  # optional: a SLEAP 1.3 python, only for comparing against the old color_track NAPS in identbench
-  naps_python: /home/mw0425/.conda/envs/naps_dev/bin/python
 
 # ---------------------------------------------------------------- data
 # labels: corrected-frame .slp (video paths are re-pointed to `videos`)
@@ -76,32 +74,9 @@ models:
     centered_instance:
       config: configs/base_centered_instance.json
       init: scratch
-      # (here models/v3b.centered_instance is a link to v3.centered_instance; a fresh clone trains it)
-    args: *recipe
-  # Larger detectors. <model>.<stage>.args are added to the shared args.
-  v4_unet:       # wider UNets; centroid with a 32x receptive-field stride
-    centroid:
-      config: configs/base_centroid.json
-      init: scratch
-      args: --filters 32 --max-stride 32 --brightness 0.5 1.5 --contrast 0.6 1.5
-    centered_instance:
-      config: configs/base_centered_instance.json
-      init: scratch
-      args: --filters 64
-    args: *recipe
-  v4_convnext:   # ImageNet-pretrained ConvNeXt-Tiny for the pose stage; UNet centroid as v3b
-    # (a ConvNeXt centroid on whole frames trained ~20x slower: 908 vs 41-48 s/epoch)
-    centroid:
-      config: configs/base_centroid.json
-      init: scratch
-      args: --brightness 0.5 1.5 --contrast 0.6 1.5
-    centered_instance:
-      config: configs/base_centered_instance.json
-      init: scratch
-      args: --backbone convnext --backbone-size tiny
     args: *recipe
 
-infer_model: v3          # model used for the tracking pipeline
+infer_model: v3b         # model used to track the videos
 
 # Videos per SLURM job (the pipeline runs per-video rules inside each batch job)
 batch:
@@ -113,7 +88,6 @@ batch:
 # evaluate on the unseen species -> results/<model>/loso.tsv (how well it transfers to a new species)
 loso:
   v3: [aurata, melanderi, pura, zephyrus]
-  v4_convnext: [aurata, melanderi]
 
 # ---------------------------------------------------------------- inference + tracking
 predict:

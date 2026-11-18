@@ -163,7 +163,7 @@ rule cpu_batch:
 
 
 rule evaluate:
-    input: f"results/{MODEL}/eval.tsv"
+    input: [f"results/{m}/eval.tsv" for m in config["models"]]
 
 
 rule trackbench:

@@ -1,0 +1,447 @@
+# Comparative bee behavior pipeline
+#
+#   labels --repoint--> data/labels --split--> data/split (fixed train/val, per dataset)
+#          --train-->   models/<model>.{centroid,centered_instance}
+#          --evaluate-> results/<model>/eval.tsv              (held-out, per dataset)
+#   videos --predict+track--> results/<model>/<ds>/tracked/<video>.slp   (GPU)
+#          --naps-->          results/<model>/<ds>/naps/<video>.slp      (color-tag identity)
+#          --filter-->        results/<model>/<ds>/filtered/<video>.slp  (tag node, smoothed)
+#          --qc-->            results/<model>/<ds>/qc.tsv
+#   trackbench: same detections x several trackers, scored against per-frame tag color
+#
+# Run (from the repo root):
+#   .venv-smk/bin/snakemake --profile profiles/della -n          # dry run
+#   .venv-smk/bin/snakemake --profile profiles/della evaluate    # train + held-out eval
+#   .venv-smk/bin/snakemake --profile profiles/della trackbench  # compare trackers
+#   .venv-smk/bin/snakemake --profile profiles/della             # everything
+
+import os
+from pathlib import Path
+
+configfile: "config/config.yaml"
+
+ROOT = os.path.abspath(".")
+ENV = config["env"]
+SLEAP_NN = f"{ROOT}/{ENV['sleap']}/sleap-nn"
+PY = f"{ROOT}/{ENV['sleap']}/python"
+NAPS_PY = ENV.get("naps_python")   # optional SLEAP 1.x python (old NAPS comparison only)
+NAPS_BIN = f"{ROOT}/{ENV['naps']}"
+NPY = f"{NAPS_BIN}/python"
+DS = config["datasets"]
+MODEL = config["infer_model"]
+MTYPES = ["centroid", "centered_instance"]
+
+LABELED = [d for d, v in DS.items() if v.get("labels")]
+
+# Leave-one-species-out: <loso.model>_loso_<ds> = the same recipe without any frames of <ds>
+LOSO = config.get("loso", {})          # {model: [datasets to leave out]}
+for _m, _dss in LOSO.items():
+    for _d in _dss:
+        config["models"][f"{_m}_loso_{_d}"] = {**config["models"][_m], "exclude": [_d]}
+
+
+def model_ds(model):
+    """Labelled datasets a model trains (and early-stops) on."""
+    ex = set(config["models"].get(model, {}).get("exclude", []))
+    return [d for d in LABELED if d not in ex]
+TRACKED = [d for d, v in DS.items() if v.get("track", True)]
+IDENTIFIED = [d for d in TRACKED if DS[d].get("identity", True)]
+
+
+def per_ds(key, ds):
+    d = config["split"][key]
+    return d.get(ds, d["default"])
+
+
+def videos(ds):
+    if DS[ds].get("video_list"):
+        return [l.strip() for l in open(DS[ds]["video_list"]) if l.strip()]
+    return sorted(p.stem for p in Path(DS[ds]["videos"][0]).glob("*.mp4"))
+
+
+def video_path(w):
+    return str(Path(DS[w.ds]["videos"][0]) / f"{w.video}.mp4")
+
+
+wildcard_constraints:
+    ds="|".join(DS),
+    mtype="|".join(MTYPES),
+    model="[A-Za-z0-9_]+",
+    video="[^/]+",
+    batch="[0-9]+-[0-9a-f]+",
+
+
+# ------------------------------------------------------------------ batching
+# One SLURM job per video per step would be ~1,000 short jobs. Instead each SLURM job takes a batch
+# of videos and runs the per-video rules below inside its allocation (a nested local Snakemake):
+#   gpu batch: predict+track for B_gpu videos (one GPU)  ->  cpu batch: decodes+NAPS+filter for B_cpu
+# Batches are formed from the videos whose outputs are still missing, so a rerun only redoes
+# what failed. Per-video targets (e.g. results/v3/pura/naps/X.slp) still work directly.
+import hashlib
+
+BATCH = config.get("batch", {"gpu": 10, "cpu": 12, "cpu_parallel": 4})
+
+
+def final_path(ds, v, model=MODEL):
+    if DS[ds].get("identity", True):
+        return f"results/{model}/{ds}/behavior/{v}.summary.json"
+    return f"results/{model}/{ds}/tracked/{v}.slp"
+
+
+def _batches(kind, ds, vids, size, model=MODEL):
+    out = []
+    for i in range(0, len(vids), size):
+        members = vids[i:i + size]
+        # the id covers the members and what the batch makes, so a new final stage gets new batches
+        key = " ".join(members) + "|" + final_path(ds, members[0], model)
+        bid = f"{kind}-{i // size:03d}-{hashlib.md5(key.encode()).hexdigest()[:6]}"
+        f = Path(f"results/{model}/{ds}/batches/{bid}.txt")
+        if not f.exists():
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text("\n".join(members) + "\n")
+        out.append((bid, members))
+    return out
+
+
+def gpu_batches(ds, model=MODEL):
+    todo = [v for v in videos(ds) if not Path(f"results/{model}/{ds}/tracked/{v}.slp").exists()]
+    return _batches("gpu", ds, todo, BATCH["gpu"], model)
+
+
+def cpu_batches(ds, model=MODEL):
+    if not DS[ds].get("identity", True):
+        return []
+    todo = [v for v in videos(ds) if not Path(final_path(ds, v, model)).exists()]
+    return _batches("cpu", ds, todo, BATCH["cpu"], model)
+
+
+def batch_markers(ds, model=MODEL):
+    return ([f"results/{model}/{ds}/batches/{b}.done" for b, _ in gpu_batches(ds, model)]
+            + [f"results/{model}/{ds}/batches/{b}.done" for b, _ in cpu_batches(ds, model)])
+
+
+SMK_LOCAL = (f"{ROOT}/.venv-smk/bin/snakemake --nolock --keep-going --rerun-incomplete "
+             "--rerun-triggers mtime --quiet rules")
+
+
+rule all:
+    input:
+        f"results/{MODEL}/eval.tsv",
+        expand("results/{model}/{ds}/qc.tsv", model=MODEL, ds=TRACKED),
+        expand("results/{model}/{ds}/behavior.tsv", model=MODEL, ds=IDENTIFIED),
+        [m for d in TRACKED for m in batch_markers(d)],
+
+
+rule gpu_batch:
+    output: "results/{model}/{ds}/batches/gpu-{batch}.done"
+    params: members="results/{model}/{ds}/batches/gpu-{batch}.txt"
+    log: "logs/batches/{model}/{ds}/gpu-{batch}.log"
+    resources: slurm_extra="--gres=gpu:1", cpus_per_task=8, mem_mb=64000, runtime=180,  # measured: <=2 h, <=50 GB per 10 videos
+    shell:
+        "{SMK_LOCAL} -j 1 $(sed 's|.*|results/{wildcards.model}/{wildcards.ds}/tracked/&.slp|' "
+        "{params.members}) > {log} 2>&1 && touch {output}"
+
+
+def cpu_batch_inputs(w):
+    members = set(Path(f"results/{w.model}/{w.ds}/batches/cpu-{w.batch}.txt").read_text().split())
+    return [f"results/{w.model}/{w.ds}/batches/{b}.done" for b, m in gpu_batches(w.ds, w.model)
+            if members & set(m)]
+
+
+rule cpu_batch:
+    input: cpu_batch_inputs
+    output: "results/{model}/{ds}/batches/cpu-{batch}.done"
+    params: members="results/{model}/{ds}/batches/cpu-{batch}.txt", j=BATCH["cpu_parallel"]
+    log: "logs/batches/{model}/{ds}/cpu-{batch}.log"
+    resources: cpus_per_task=BATCH["cpu_parallel"], mem_mb=16000, runtime=60,  # measured: 4-8 min, <=2.5 GB
+    shell:
+        # only videos whose tracking exists (a failed GPU video must not run on a CPU node)
+        "T=$(for v in $(cat {params.members}); do "
+        "[ -s results/{wildcards.model}/{wildcards.ds}/tracked/$v.slp ] && "
+        "echo results/{wildcards.model}/{wildcards.ds}/behavior/$v.summary.json; done); "
+        "{SMK_LOCAL} -j {params.j} $T > {log} 2>&1 && touch {output}"
+
+
+rule evaluate:
+    input: f"results/{MODEL}/eval.tsv"
+
+
+rule trackbench:
+    input: f"results/{MODEL}/trackbench/summary.tsv"
+
+
+rule identbench:
+    input: f"results/{MODEL}/identbench/summary.tsv"
+
+
+rule loso:
+    input: [f"results/{m}/loso.tsv" for m in LOSO]
+
+
+# ------------------------------------------------------------------ labels
+rule repoint_labels:
+    input: lambda w: DS[w.ds]["labels"]
+    output: "data/labels/{ds}.slp"
+    params: dirs=lambda w: " ".join(DS[w.ds]["videos"])
+    shell: "{PY} scripts/repoint_labels.py {input} {output} {params.dirs}"
+
+
+rule split_labels:
+    input: expand("data/labels/{ds}.slp", ds=LABELED)
+    output:
+        expand("data/split/{ds}.{part}.slp", ds=LABELED, part=["train", "val"]),
+    params:
+        inputs=" ".join(f"{d}=data/labels/{d}.slp" for d in LABELED),
+        val=" ".join(f"{d}={per_ds('val_fraction', d)}" for d in LABELED),
+        seed=config["split"]["seed"],
+    shell:
+        "{PY} scripts/split_labels.py --out data/split --seed {params.seed} "
+        "--inputs {params.inputs} --val {params.val}"
+
+
+# ------------------------------------------------------------------ training
+def train_labels(w):
+    # oversampling = repeating a dataset's train file
+    return [f"data/split/{d}.train.slp" for d in model_ds(w.model)
+            for _ in range(per_ds("oversample", d))]
+
+
+rule train:
+    input:
+        train=lambda w: sorted(set(train_labels(w))),
+        val=lambda w: expand("data/split/{ds}.val.slp", ds=model_ds(w.model)),
+    output: "models/{model}.{mtype}/best.ckpt"
+    params:
+        labels=lambda w: " ".join(train_labels(w)),
+        cfg=lambda w: config["models"][w.model][w.mtype]["config"],
+        init=lambda w: ("" if config["models"][w.model][w.mtype]["init"] == "scratch"
+                        else f"--init-weights {config['models'][w.model][w.mtype]['init']}"),
+        args=lambda w: (config["models"][w.model].get("args", "") + " "
+                        + config["models"][w.model][w.mtype].get("args", "")),
+    log: "logs/train/{model}.{mtype}.log"
+    resources:
+        slurm_extra="--gres=gpu:1", cpus_per_task=8, mem_mb=96000, runtime=1439,
+    shell:
+        "{PY} scripts/train.py --config {params.cfg} {params.init} "
+        "--labels {params.labels} --val-labels {input.val} "
+        "--out models --run-name {wildcards.model}.{wildcards.mtype} {params.args} > {log} 2>&1"
+
+
+rule eval_model:
+    input:
+        c="models/{model}.centroid/best.ckpt",
+        i="models/{model}.centered_instance/best.ckpt",
+        val=expand("data/split/{ds}.val.slp", ds=LABELED),
+    output: "results/{model}/eval.tsv"
+    params:
+        val=lambda w: " ".join(
+            [f"{d}=data/split/{d}.val.slp" for d in LABELED]
+            + [f"{d}_all=data/labels/{d}.slp"
+               for d in config["models"].get(w.model, {}).get("exclude", [])])
+    log: "logs/eval/{model}.log"
+    resources: slurm_extra="--gres=gpu:1", cpus_per_task=4, mem_mb=32000, runtime=60,
+    shell:
+        "{PY} scripts/evaluate.py --centroid models/{wildcards.model}.centroid "
+        "--instance models/{wildcards.model}.centered_instance --val {params.val} "
+        "--sleap-nn {SLEAP_NN} --peak-threshold {config[predict][peak_threshold]} "
+        "--out {output} > {log} 2>&1"
+
+
+# ------------------------------------------------------------------ inference + tracking
+PRED = config["predict"]
+PREDICT_ARGS = (f"--peak_threshold {PRED['peak_threshold']} -n {PRED['max_instances']} "
+                f"-b {PRED['batch_size']} --integral_patch_size {PRED['integral_patch_size']} "
+                f"--no_empty_frames {PRED.get('extra', '')}")
+
+
+rule predict_track:
+    input:
+        c="models/{model}.centroid/best.ckpt",
+        i="models/{model}.centered_instance/best.ckpt",
+        video=video_path,
+    output: "results/{model}/{ds}/tracked/{video}.slp"
+    params:
+        track=f"--tracking --tracker {config['tracking']['tracker']} {config['tracking']['args']}",
+    log: "logs/predict/{model}/{ds}/{video}.log"
+    resources: slurm_extra="--gres=gpu:1", cpus_per_task=4, mem_mb=32000, runtime=120,
+    shell:
+        "{SLEAP_NN} predict -m models/{wildcards.model}.centroid "
+        "-m models/{wildcards.model}.centered_instance -i {input.video} -o {output} "
+        "{PREDICT_ARGS} {params.track} > {log} 2>&1"
+
+
+# NAPS identity (Wolfffff/naps wolf-naps-colortag): tag-dot brightness -> decodes -> joint engine
+rule color_decodes:
+    input:
+        slp="results/{model}/{ds}/tracked/{video}.slp",
+        video=video_path,
+    output: "results/{model}/{ds}/naps/{video}.decodes.npz"
+    params: config["naps"]["decodes"]
+    log: "logs/naps/{model}/{ds}/{video}.decodes.log"
+    resources: cpus_per_task=2, mem_mb=16000, runtime=120,
+    shell:
+        "{NAPS_BIN}/naps-color-decodes --slp-path {input.slp} --video-path {input.video} "
+        "--output-path {output} --tag-node-name {config[naps][tag_node]} {params} > {log} 2>&1"
+
+
+rule naps:
+    input:
+        slp="results/{model}/{ds}/tracked/{video}.slp",
+        decodes="results/{model}/{ds}/naps/{video}.decodes.npz",
+        video=video_path,
+    output:
+        slp="results/{model}/{ds}/naps/{video}.slp",
+        sidecar="results/{model}/{ds}/naps/{video}.identity.npz",
+        report="results/{model}/{ds}/naps/{video}.report.json",
+    params:
+        raw="results/{model}/{ds}/naps/{video}.raw.slp",
+        track=config["naps"]["track"],
+        names=config["naps"]["names"],
+    log: "logs/naps/{model}/{ds}/{video}.log"
+    resources: cpus_per_task=2, mem_mb=32000, runtime=120,
+    shell:
+        "(NF=$({NPY} -c \"import numpy,sys;print(len(numpy.load(sys.argv[1])['frame_idx']))\" {input.decodes}); "
+        "{NAPS_BIN}/naps-track --slp-path {input.slp} --video-path {input.video} "
+        "--decodes {input.decodes} --tag-node-name {config[naps][tag_node]} "
+        "--start-frame 0 --end-frame $((NF-1)) --aruco-marker-set DICT_4X4_50 {params.track} "
+        "--output-path {params.raw} --identity-sidecar {output.sidecar} "
+        "--report-json {output.report} && "
+        "{NPY} scripts/rename_tracks.py {params.raw} {output.slp} {params.names} && "
+        "rm -f {params.raw}) > {log} 2>&1"
+
+
+rule filter:
+    # clean + smooth each NAPS identity's trajectory (identity from NAPS only; see smooth_tracks.py)
+    input: "results/{model}/{ds}/naps/{video}.slp"
+    output:
+        slp="results/{model}/{ds}/filtered/{video}.slp",
+        h5="results/{model}/{ds}/filtered/{video}.analysis.h5",
+    params: f=config["filter"]
+    log: "logs/filter/{model}/{ds}/{video}.log"
+    resources: cpus_per_task=1, mem_mb=16000, runtime=30,
+    shell:
+        "{NPY} scripts/smooth_tracks.py {input} {output.slp} --analysis-h5 {output.h5} "
+        "--nodes {params.f[nodes]} --max-jump {params.f[max_jump]} --max-gap {params.f[max_gap]} "
+        "--window {params.f[window]} > {log} 2>&1"
+
+
+rule behavior:
+    # interactions, bouts and velocities, in the lbal-circle-tubes file formats
+    input: "results/{model}/{ds}/filtered/{video}.analysis.h5"
+    output: "results/{model}/{ds}/behavior/{video}.summary.json"
+    params:
+        b=config["behavior"],
+        scale=lambda w: DS[w.ds].get("mm_per_px", config["behavior"]["mm_per_px"]),
+    log: "logs/behavior/{model}/{ds}/{video}.log"
+    resources: cpus_per_task=2, mem_mb=16000, runtime=30,
+    shell:
+        "{NPY} scripts/behavior.py {input} --out-dir results/{wildcards.model}/{wildcards.ds}/behavior "
+        "--name {wildcards.video} --model {params.b[interaction_model]} "
+        "--bout-gap {params.b[bout_gap]} --vel-node {params.b[vel_node]} --fps {params.b[fps]} "
+        "--mm-per-px {params.scale} --moving-mm-s {params.b[moving_mm_s]} > {log} 2>&1"
+
+
+rule behavior_table:
+    input: lambda w: batch_markers(w.ds, w.model)
+    output: "results/{model}/{ds}/behavior.tsv"
+    run:
+        import json, pandas as pd
+        rows = [json.load(open(f"results/{wildcards.model}/{wildcards.ds}/behavior/{v}.summary.json"))
+                for v in videos(wildcards.ds)
+                if Path(f"results/{wildcards.model}/{wildcards.ds}/behavior/{v}.summary.json").exists()]
+        pd.DataFrame(rows).to_csv(output[0], sep="\t", index=False)
+
+
+def qc_inputs(w):
+    # after all batches of the dataset (whatever exists is reported, missing videos are listed)
+    return batch_markers(w.ds, w.model)
+
+
+rule qc:
+    # filtered files are reported but not required (the filter refuses videos where NAPS
+    # didn't find exactly two tags)
+    input: qc_inputs
+    output: "results/{model}/{ds}/qc.tsv"
+    params: vids=lambda w: " ".join(videos(w.ds)), d="results/{model}/{ds}"
+    shell:
+        "{PY} scripts/qc.py --videos {params.vids} --tracked {params.d}/tracked "
+        "--naps {params.d}/naps --filtered {params.d}/filtered --out {output}"
+
+
+# ------------------------------------------------------------------ tracker benchmark
+TB = config["trackbench"]
+
+
+rule trackbench_predict:
+    input:
+        c="models/{model}.centroid/best.ckpt",
+        i="models/{model}.centered_instance/best.ckpt",
+        video=video_path,
+    output: "results/{model}/trackbench/{tracker}/{ds}/{video}.slp"
+    params: t=lambda w: TB["trackers"][w.tracker]
+    log: "logs/trackbench/{model}/{tracker}/{ds}/{video}.log"
+    resources: slurm_extra="--gres=gpu:1", cpus_per_task=4, mem_mb=32000, runtime=60,
+    shell:
+        "{SLEAP_NN} predict -m models/{wildcards.model}.centroid "
+        "-m models/{wildcards.model}.centered_instance -i {input.video} -o {output} "
+        "--frames {TB[frames]} {PREDICT_ARGS} --tracking {params.t} > {log} 2>&1"
+
+
+rule trackbench_colors:
+    input:
+        slp="results/{model}/trackbench/{tracker}/{ds}/{video}.slp",
+        video=video_path,
+    output: "results/{model}/trackbench/{tracker}/{ds}/{video}.colors.csv"
+    resources: cpus_per_task=1, mem_mb=8000, runtime=60,
+    shell: "{NPY} scripts/tag_colors.py {input.slp} {input.video} {output}"
+
+
+rule trackbench_summary:
+    input:
+        [f"results/{{model}}/trackbench/{t}/{v}.colors.csv"
+         for t in TB["trackers"] for v in TB["videos"]],
+    output: "results/{model}/trackbench/summary.tsv"
+    params:
+        inputs=lambda w: " ".join(f"{t}/{v}=results/{w.model}/trackbench/{t}/{v}.colors.csv"
+                                  for t in TB["trackers"] for v in TB["videos"]),
+    shell: "{PY} scripts/score_tracking.py --inputs {params.inputs} --out {output}"
+
+
+# ------------------------------------------------------------------ identity benchmark
+# On the trackbench clips: hold out 20 % of the tag readings (1-s blocks), run NAPS variants on
+# the rest and check the identities they give the held-out readings (+ old color_track NAPS).
+def identbench_inputs(w):
+    return [f"results/{w.model}/identbench/{v}/summary.tsv" for v in TB["videos"]]
+
+
+rule identbench_video:
+    input:
+        slp=lambda w: f"results/{w.model}/trackbench/{TB['identbench_tracker']}/{w.ds}/{w.video}.slp",
+        video=video_path,
+    output: "results/{model}/identbench/{ds}/{video}/summary.tsv"
+    params: old=f"--old-python {NAPS_PY}" if NAPS_PY and Path(NAPS_PY).exists() else ""
+    log: "logs/identbench/{model}/{ds}/{video}.log"
+    resources: cpus_per_task=2, mem_mb=32000, runtime=120,
+    shell:
+        "{NPY} scripts/identity_bench.py --slp {input.slp} --video {input.video} "
+        "--out-dir results/{wildcards.model}/identbench/{wildcards.ds}/{wildcards.video} "
+        "--naps-bin {NAPS_BIN} {params.old} > {log} 2>&1"
+
+
+rule identbench_summary:
+    input: identbench_inputs
+    output: "results/{model}/identbench/summary.tsv"
+    params: inputs=lambda w: " ".join(f"{v}=results/{w.model}/identbench/{v}/summary.tsv" for v in TB["videos"])
+    shell: "{NPY} scripts/summarize_identbench.py --out {output} {params.inputs}"
+
+
+# ------------------------------------------------------------------ leave-one-species-out
+rule loso_summary:
+    input:
+        ref="results/{model}/eval.tsv",
+        loso=lambda w: [f"results/{w.model}_loso_{d}/eval.tsv" for d in LOSO[w.model]],
+    output: "results/{model}/loso.tsv"
+    params:
+        inputs=lambda w: " ".join(f"{d}=results/{w.model}_loso_{d}/eval.tsv"
+                                  for d in LOSO[w.model]),
+    shell: "{NPY} scripts/summarize_loso.py --ref {input.ref} --out {output} {params.inputs}"

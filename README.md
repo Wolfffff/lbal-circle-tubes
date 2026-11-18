@@ -16,6 +16,10 @@
     * Jupyter notebooks used for exploratory data analysis and visualization.
 * `results`:
   * Outputs from the analysis, including processed data and summary statistics.
+* `comparative_pipeline`
+  * Snakemake pipeline (sleap-nn pose → NAPS colour-tag identity → interactions/bouts/velocities)
+    that produces this analysis' inputs for all species, plus notes on issues found in the original
+    processing. See `comparative_pipeline/README.md`.
 
 ## Other Relevant Repositories
 

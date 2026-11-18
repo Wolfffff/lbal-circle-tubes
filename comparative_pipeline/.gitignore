@@ -1,0 +1,28 @@
+# environments (envs/setup.sh)
+.venv*
+.cache/
+# generated
+.snakemake/
+data/
+models/
+results/
+logs/
+__pycache__/
+# old one-off runs and the pre-Snakefile layout (kept locally, not shared)
+archive/
+# root copies of the legacy NAPS scripts (kept until running jobs finish; use scripts/legacy/)
+/scripts/color_tag.py
+/scripts/color_track.py
+/scripts/cost_matrix.py
+/scripts/filter_nodes.py
+/scripts/matching.py
+/scripts/sleap_utils.py
+/scripts/classifier.pkl
+# pre-Snakefile per-species folders
+/base/
+/aurata/
+/melanderi/
+/pura/
+/zephyrus/
+/oenotherae/
+/local_26/

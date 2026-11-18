@@ -1,0 +1,8 @@
+# pose estimation + tracking (sleap-nn, PyTorch). torch/torchvision come from the CUDA 12.8 index
+# (see setup.sh).
+sleap-nn==0.3.5
+sleap-io==0.9.5
+torch==2.11.0
+torchvision==0.26.0
+numpy==1.26.4
+pandas

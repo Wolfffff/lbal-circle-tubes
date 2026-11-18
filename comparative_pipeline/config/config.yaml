@@ -1,0 +1,177 @@
+# Comparative bee behavior: SLEAP (sleap-nn) -> NAPS color-tag ID -> filter
+# Everything tunable lives here. Paths are relative to the repo root unless absolute.
+
+# ---------------------------------------------------------------- environments
+env:
+  sleap: .venv-sleap/bin         # sleap-nn 0.3.5 (envs/setup.sh builds all three)
+  naps: .venv-naps/bin           # NAPS (Wolfffff/naps wolf-naps-colortag): naps-track, naps-color-decodes
+  # optional: a SLEAP 1.3 python, only for comparing against the old color_track NAPS in identbench
+  naps_python: /home/mw0425/.conda/envs/naps_dev/bin/python
+
+# ---------------------------------------------------------------- data
+# labels: corrected-frame .slp (video paths are re-pointed to `videos`)
+# videos: directories searched for the label videos; the first one is also what gets tracked
+# track: run the full pipeline on the videos in videos[0] (all .mp4s, or those listed in video_list)
+# video_list: optional file of video stems to track (one per line)
+datasets:
+  base:          # L. baleicum, Japan 2023: the original base-model training set
+    labels: labels/base.slp   # labeled_color_tag_frames_20_x_10_vids_03_to_80_minus_5.slp
+    videos:
+      - /scratch/gpfs/SKOCHER/mw0425/KL_SLEAP_LBAL/video_cropping/crop_output
+      - /scratch/gpfs/SKOCHER/mw0425/KL_SLEAP_LBAL/11_01_23_LBAL_color_test/SLEAP_train
+    track: false
+  aurata:
+    labels: labels/aurata.slp
+    videos: [/scratch/gpfs/SKOCHER/mw0425/comparative_behavior/aurata/input]
+  melanderi:
+    labels: labels/melanderi.slp
+    videos: [/scratch/gpfs/SKOCHER/mw0425/KL_Walla_24/video_cropping/crop_output]
+    video_list: lists/melanderi.txt   # Walla Walla dir has 108 videos; 80 are melanderi
+    identity: false   # both tags read bright in grayscale (light dot + another light colour?):
+                      # brightness can't tell them apart -> stop after tracking until resolved
+  pura:
+    labels: labels/pura.slp
+    videos: [/scratch/gpfs/SKOCHER/mw0425/comparative_behavior/pura/input]
+  zephyrus:
+    labels: labels/zephyrus.slp
+    videos: [/scratch/gpfs/SKOCHER/mw0425/comparative_behavior/zephyrus/input]
+  oenotherae:    # no corrected frames yet -> inference only
+    videos: [/scratch/gpfs/SKOCHER/mw0425/KL_SLEAP_LOEN/SLEAP_and_NAPS/input]
+  local_26:      # 2026 local recordings: a mix of A. aurata, A. pura, L. zephyrus (arena stickers;
+                 # per-video species + bee IDs in metadata/local_26_videos.tsv) -> inference only
+    videos: [/scratch/gpfs/SKOCHER/mw0425/KL_local_26/video_cropping/crop_output]
+    video_list: lists/local_26.txt   # 49 of 64 crops; the other 15 show no arena
+
+# Fixed train/val split shared by every model (so models are compared on the same frames)
+split:
+  seed: 0
+  val_fraction: {default: 0.2, base: 0.1}
+  # repeat each dataset's TRAIN frames this many times (val is never repeated) so the
+  # 48-frame species aren't drowned out by ~1500 base frames
+  oversample: {default: 6, base: 1}
+
+# ---------------------------------------------------------------- models
+# Each entry trains <name>.centroid and <name>.centered_instance.
+# config: legacy SLEAP training_config.json supplying architecture + preprocessing
+# init:   "scratch" or a legacy best_model.h5 / sleap-nn .ckpt to start from
+models:
+  v3:
+    centroid:
+      config: configs/base_centroid.json
+      init: scratch
+    centered_instance:
+      config: configs/base_centered_instance.json
+      init: scratch
+    # anchor both stages on thorax (labeled in 100% of instances; tag only 57-69%)
+    args: &recipe >-
+      --anchor thorax --crop-size 224 --rotation 180 --scale-range 0.8 1.25
+      --lr 1e-4 --epochs 400 --patience 40 --batch-size 4 --steps-per-epoch 300
+  # v3 + brightness/contrast augmentation for the centroid stage (v3's centroid finds no bees in
+  # the dark 2026-06-22 oenotherae videos); the pose stage is v3's (it already had it).
+  v3b:
+    centroid:
+      config: configs/base_centroid.json
+      init: scratch
+      args: --brightness 0.5 1.5 --contrast 0.6 1.5
+    centered_instance:
+      config: configs/base_centered_instance.json
+      init: scratch
+      # (here models/v3b.centered_instance is a link to v3.centered_instance; a fresh clone trains it)
+    args: *recipe
+  # Larger detectors. <model>.<stage>.args are added to the shared args.
+  v4_unet:       # wider UNets; centroid with a 32x receptive-field stride
+    centroid:
+      config: configs/base_centroid.json
+      init: scratch
+      args: --filters 32 --max-stride 32 --brightness 0.5 1.5 --contrast 0.6 1.5
+    centered_instance:
+      config: configs/base_centered_instance.json
+      init: scratch
+      args: --filters 64
+    args: *recipe
+  v4_convnext:   # ImageNet-pretrained ConvNeXt-Tiny for the pose stage; UNet centroid as v3b
+    # (a ConvNeXt centroid on whole frames trained ~20x slower: 908 vs 41-48 s/epoch)
+    centroid:
+      config: configs/base_centroid.json
+      init: scratch
+      args: --brightness 0.5 1.5 --contrast 0.6 1.5
+    centered_instance:
+      config: configs/base_centered_instance.json
+      init: scratch
+      args: --backbone convnext --backbone-size tiny
+    args: *recipe
+
+infer_model: v3          # model used for the tracking pipeline
+
+# Videos per SLURM job (the pipeline runs per-video rules inside each batch job)
+batch:
+  gpu: 10            # predict+track, sequential on one GPU (~4 min per 15-min video)
+  cpu: 12            # decodes + NAPS + filter
+  cpu_parallel: 4    # videos at a time inside a CPU batch job
+
+# Leave-one-species-out (`snakemake loso`): train <model> without each of these datasets and
+# evaluate on the unseen species -> results/<model>/loso.tsv (how well it transfers to a new species)
+loso:
+  v3: [aurata, melanderi, pura, zephyrus]
+  v4_convnext: [aurata, melanderi]
+
+# ---------------------------------------------------------------- inference + tracking
+predict:
+  peak_threshold: 0.2
+  max_instances: 2       # two bees per arena
+  batch_size: 8
+  integral_patch_size: 5 # subpixel (integral) peak refinement is on by default
+  extra: >-
+    --filter_overlapping --filter_overlapping_method oks --filter_overlapping_threshold 0.8
+
+tracking:
+  tracker: ocsort        # chosen by `snakemake trackbench` (see results/<model>/trackbench/summary.tsv)
+  args: --max_tracks 2 --link_tracklets
+
+# Tracker benchmark: same detections, different trackers, scored against per-frame tag color
+trackbench:
+  trackers:
+    classic:   --tracker classic --max_tracks 2 --link_tracklets
+    sort:      --tracker sort --max_tracks 2 --link_tracklets
+    bytetrack: --tracker bytetrack --max_tracks 2 --link_tracklets
+    ocsort:    --tracker ocsort --max_tracks 2 --link_tracklets
+  frames: 0-5999         # 5 min @ 20 fps per video
+  videos:                # dataset/video
+    - aurata/06_09_23_1750_BL
+    - melanderi/20240619_1507_BL
+    - pura/20230721_1532_BL
+    - zephyrus/20230802_1809_Camera0_TR
+  identbench_tracker: ocsort   # tracker output the identity benchmark runs on
+
+# ---------------------------------------------------------------- NAPS + filter
+# Identity from the paint dots. The videos are grayscale: the "purple" dot is a bright disc on the
+# thorax, the "black" dot is (nearly) invisible. naps-color-decodes reads the brightness at the tag
+# node (75th percentile of a r=5 disc, per-video Otsu threshold, +-10 grey-level abstention) and
+# only bright discs vote; naps-track's joint engine (2-tag closed set) propagates identity along
+# tracklets. Held-out evaluation: `snakemake identbench`.
+naps:
+  tag_node: tag
+  decodes: --radius 5 --percentile 75 --margin 10 --bright-tag 1 --dark-tag 0
+  # min-confidence 0.95: identbench gave the same held-out accuracy as 0.99 with higher coverage
+  track: >-
+    --identity-engine joint --tracklets built --closed-set 0 1 --colony-size 2
+    --min-confidence 0.95
+  names: 0=black 1=purple       # tag id -> track name (ArUcoTag#black / ArUcoTag#purple)
+
+# Trajectory cleaning per NAPS identity (scripts/smooth_tracks.py; replaces filter_nodes.py, which
+# re-assigned identities by angle and could put both names on one bee)
+filter:
+  nodes: tag          # nodes to clean + smooth ("all" for the whole skeleton)
+  max_jump: 60        # px/frame: single-frame spikes farther than this from both neighbours are removed
+  max_gap: 10         # frames: longer gaps stay empty (no invented positions)
+  window: 5           # running-median frames
+
+# Behaviour measures per video (scripts/behavior.py), in the lbal-circle-tubes formats:
+# interactions (naps-interactions), Head_to_Head / Head_to_Body bouts, per-bee velocities.
+behavior:
+  interaction_model: configs/interactions.yaml   # = lbal-circle-tubes naps.yaml
+  bout_gap: 20          # frames; interaction frames closer than this are one bout
+  vel_node: thorax
+  fps: 20
+  mm_per_px: 0.0946     # LBAL circle-tube rig; set datasets.<ds>.mm_per_px where the rig differs
+  moving_mm_s: 1.0      # "moving" threshold for the motion fraction

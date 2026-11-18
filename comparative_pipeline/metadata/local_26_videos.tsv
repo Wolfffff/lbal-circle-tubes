@@ -1,0 +1,69 @@
+# local_26 (2026 local recordings): species and bee IDs read from the arena stickers
+# (frame ~3000 of each crop; AAUR = Augochlorella aurata, APUR = A. pura, LZEP = Lasioglossum zephyrus;
+#  "1P+2B" = bee 1 purple dot, bee 2 black dot). "empty" = the crop shows no arena (not tracked).
+# "?" = sticker not visible/legible in that frame; species guessed from the session where marked.
+video	species	sticker	track
+20260427_1232_Camera1_BL	empty		no
+20260427_1232_Camera1_BR	empty		no
+20260427_1232_Camera1_TL	AAUR	1P+2B	yes
+20260427_1232_Camera1_TR	AAUR	3P+4B	yes
+20260504_1244_Camera1_BL	AAUR?	?	yes
+20260504_1244_Camera1_BR	AAUR?	?	yes
+20260504_1244_Camera1_TL	AAUR	5P+6B	yes
+20260504_1244_Camera1_TR	AAUR	7P+8B	yes
+20260518_1225_Camera1_BL	empty		no
+20260518_1225_Camera1_BR	empty		no
+20260518_1225_Camera1_TL	AAUR	?	yes
+20260518_1225_Camera1_TR	AAUR	15P+16B?	yes
+20260519_1225_Camera1_BL	empty		no
+20260519_1225_Camera1_BR	empty		no
+20260519_1225_Camera1_TL	AAUR	17P+18B?	yes
+20260519_1225_Camera1_TR	empty		no
+20260520_1427_Camera1_BL	empty		no
+20260520_1427_Camera1_BR	empty		no
+20260520_1427_Camera1_TL	APUR	7P+8B	yes
+20260520_1427_Camera1_TR	empty		no
+20260520_1427_Camera2_BL	APUR	?	yes
+20260520_1427_Camera2_BR	APUR	?	yes
+20260520_1427_Camera2_TL	APUR	1P+2B	yes
+20260520_1427_Camera2_TR	APUR	3P+4B	yes
+20260526_1233_Camera1_BL	LZEP	5P+6B	yes
+20260526_1233_Camera1_BR	LZEP	7P+8B	yes
+20260526_1233_Camera1_TL	LZEP	1P+2B	yes
+20260526_1233_Camera1_TR	LZEP	3P+4B	yes
+20260528_1300_Camera1_BL	APUR	17P+18B	yes
+20260528_1300_Camera1_BR	empty		no
+20260528_1300_Camera1_TL	APUR	13P+14B	yes
+20260528_1300_Camera1_TR	APUR	15P+16B	yes
+20260603_1317_Camera1_BL	APUR	23P+24B	yes
+20260603_1317_Camera1_BR	APUR	25P+26B	yes
+20260603_1317_Camera1_TL	APUR	19P+20B	yes
+20260603_1317_Camera1_TR	APUR	21P+22B	yes
+20260604_1239_Camera1_BL	LZEP	15P+16B	yes
+20260604_1239_Camera1_BR	LZEP	17P+18B	yes
+20260604_1239_Camera1_TL	LZEP	11P+12B	yes
+20260604_1239_Camera1_TR	LZEP	13P+14B	yes
+20260604_1239_Camera2_BL	AAUR	23P+24B	yes
+20260604_1239_Camera2_BR	LZEP	9P+10B	yes
+20260604_1239_Camera2_TL	AAUR	19P+20B	yes
+20260604_1239_Camera2_TR	AAUR	21P+22B	yes
+20260604_1239_Camera3_BL	LZEP	23P+24B	yes
+20260604_1239_Camera3_BR	LZEP	25P+26B	yes
+20260604_1239_Camera3_TL	LZEP	19P+20B	yes
+20260604_1239_Camera3_TR	LZEP	21P+22B	yes
+20260605_1152_Camera1_BL	LZEP	41P+42B	yes
+20260605_1152_Camera1_BR	LZEP	43P+44B	yes
+20260605_1152_Camera1_TL	LZEP	37P+38B	yes
+20260605_1152_Camera1_TR	LZEP	39P+40B	yes
+20260605_1152_Camera2_BL	LZEP	35P+36B	yes
+20260605_1152_Camera2_BR	LZEP	33P+34B?	yes
+20260605_1152_Camera2_TL	LZEP	29P+30B	yes
+20260605_1152_Camera2_TR	LZEP	32P+48B?	yes
+20260605_1152_Camera3_BL	empty		no
+20260605_1152_Camera3_BR	empty		no
+20260605_1152_Camera3_TL	LZEP	45P+46B	yes
+20260605_1152_Camera3_TR	empty		no
+20260605_1423_Camera1_BL	APUR	33P+34B	yes
+20260605_1423_Camera1_BR	empty		no
+20260605_1423_Camera1_TL	APUR	29P+30B	yes
+20260605_1423_Camera1_TR	APUR?	31?	yes

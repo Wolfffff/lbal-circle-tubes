@@ -1,0 +1,13 @@
+# Della (Princeton) SLURM profile: snakemake --profile profiles/della
+executor: slurm
+jobs: 60                  # concurrent SLURM jobs
+latency-wait: 60
+keep-going: true          # one bad video shouldn't stop the rest
+rerun-incomplete: true
+rerun-triggers: mtime     # rerun only when inputs are newer (editing params/paths never retrains)
+printshellcmds: true
+default-resources:
+  slurm_account: skocher
+  runtime: 60             # minutes
+  mem_mb: 8000
+  cpus_per_task: 1

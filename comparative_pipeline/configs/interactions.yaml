@@ -1,0 +1,128 @@
+Interactions:
+- dest: Head_w_antennae
+  name: Head_to_Head
+  origin: Head_w_antennae
+  symmetical: true
+#- dest: HeadHull
+#  name: HeadHull_to_HeadHull
+#  origin: HeadHull
+#  symmetical: true
+- dest: Body_wo_head
+  name: Head_to_Body
+  origin: Head_w_antennae
+  symmetical: false
+#- dest: Hull_wo_head
+#  name: Head_to_Hull
+#  origin: Head_w_antennae
+#  symmetical: false
+#- dest: Hull_wo_head
+#  name: HeadHull_to_Hull
+#  origin: HeadHull
+#  symmetical: false
+Models:
+- includes:
+  - Head
+  - Left_antenna
+  - Right_antenna
+  name: Head_w_antennae
+- includes:
+  - Head_hull
+  name: HeadHull
+- excludes:
+  - Head
+  - Left_antenna
+  - Right_antenna 
+  includes:
+  - Hull
+  name: Hull_wo_head
+- excludes:
+  - Head
+  includes:
+  - Body
+#  - Left_foreleg
+#  - Right_foreleg
+#  - Left_midleg
+#  - Right_midleg
+#  - Left_hindleg
+#  - Right_hindleg
+  name: Body_wo_head
+Skeleton:
+- buffer: 12
+  name: Head
+  nodes:
+  - mandible
+  - head
+  shape: reduced-line
+- buffer: 4
+  name: Left_antenna
+  nodes:
+  - antennaL1
+  - antennaL2
+  - mandible
+  shape: line
+- buffer: 4
+  name: Right_antenna
+  nodes:
+  - antennaR1
+  - antennaR2
+  - mandible
+  shape: line
+#- buffer: 5
+#  name: Left_foreleg
+#  nodes:
+#  - foreleg_l
+#  - thorax_h
+#  shape: line
+#- buffer: 5
+#  name: Right_foreleg
+#  nodes:
+#  - foreleg_r
+#  - thorax_h
+#  shape: line
+#- buffer: 5
+#  name: Left_midleg
+#  nodes:
+#  - midleg_l
+#  - thorax_a
+#  shape: line
+#- buffer: 5
+#  name: Right_midleg
+#  nodes:
+#  - midleg_r
+#  - thorax_a
+#  shape: line
+#- buffer: 5
+#  name: Left_hindleg
+#  nodes:
+#  - hindleg_l
+#  - thorax_a
+#  shape: line
+#- buffer: 5
+#  name: Right_hindleg
+#  nodes:
+#  - hindleg_r
+#  - thorax_a
+#  shape: line
+- buffer: 24
+  name: Body
+  nodes:
+  - abdomen
+  - thorax
+  - head
+  shape: reduced-line
+- name: Hull
+  shape: hull
+  exclude_nodes:
+  - mandible
+  - antennaL1
+  - antennaL2
+  - antennaR1
+  - antennaR2
+- name: Head_hull
+  shape: hull
+  nodes:
+  - mandible
+  - antennaL1
+  - antennaL2
+  - antennaR1
+  - antennaR2

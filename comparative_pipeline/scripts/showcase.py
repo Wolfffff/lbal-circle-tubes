@@ -60,4 +60,6 @@ for ds, (title, stage) in SPECIES.items():
     subprocess.run([sys.executable, str(Path(__file__).parent / "render_video.py"), "--slp", str(slp),
                     "--video", str(vid), "--out", str(o / f"{ds}.mp4"), "--title", title,
                     "--subtitle", sub, "--start", str(start), "--seconds", str(a.seconds),
-                    "--gif", str(o / f"{ds}.gif"), "--poster", str(o / f"{ds}.png")], check=True)
+                    "--gif", str(o / f"{ds}.gif"), "--poster", str(o / f"{ds}.png"),
+                    "--mm-per-px", str(cfg["datasets"].get(ds, {}).get("mm_per_px", cfg["behavior"]["mm_per_px"]))],
+                   check=True)

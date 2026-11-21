@@ -21,24 +21,30 @@ datasets:
   aurata:
     labels: labels/aurata.slp
     videos: [/scratch/gpfs/SKOCHER/mw0425/comparative_behavior/aurata/input]
+    mm_per_px: 0.0965   # 103.6 px/cm (Michelle, 2026-11-21)
   melanderi:
     labels: labels/melanderi.slp
     videos: [/scratch/gpfs/SKOCHER/mw0425/KL_Walla_24/video_cropping/crop_output]
+    mm_per_px: 0.1292   # 77.4 px/cm
     video_list: lists/melanderi.txt   # Walla Walla dir has 108 videos; 80 are melanderi
-    identity: false   # both tags read bright in grayscale (light dot + another light colour?):
-                      # brightness can't tell them apart -> stop after tracking until resolved
+    identity: false   # purple + black craft-store paper: the 'black' reads mid-grey, separable in
+                      # ~3 of 10 videos -> tracked without identity
   pura:
     labels: labels/pura.slp
     videos: [/scratch/gpfs/SKOCHER/mw0425/comparative_behavior/pura/input]
+    mm_per_px: 0.0965   # 103.6 px/cm
   zephyrus:
     labels: labels/zephyrus.slp
     videos: [/scratch/gpfs/SKOCHER/mw0425/comparative_behavior/zephyrus/input]
+    mm_per_px: 0.0965   # 103.6 px/cm
   oenotherae:    # no corrected frames yet -> inference only
     videos: [/scratch/gpfs/SKOCHER/mw0425/KL_SLEAP_LOEN/SLEAP_and_NAPS/input]
+    mm_per_px: 0.1026   # 97.5 px/cm
   local_26:      # 2026 local recordings: a mix of A. aurata, A. pura, L. zephyrus (arena stickers;
                  # per-video species + bee IDs in metadata/local_26_videos.tsv) -> inference only
     videos: [/scratch/gpfs/SKOCHER/mw0425/KL_local_26/video_cropping/crop_output]
     video_list: lists/local_26.txt   # 49 of 64 crops; the other 15 show no arena
+    mm_per_px: 0.0965   # same rig as aurata/pura/zephyrus (103.6 px/cm)
 
 # Fixed train/val split shared by every model (so models are compared on the same frames)
 split:
@@ -163,5 +169,5 @@ behavior:
   bout_gap: 20          # frames; interaction frames closer than this are one bout
   vel_node: thorax
   fps: 20
-  mm_per_px: 0.0946     # LBAL circle-tube rig; set datasets.<ds>.mm_per_px where the rig differs
+  mm_per_px: 0.0946     # LBAL circle-tube rig (default); per-rig values under datasets.<ds>.mm_per_px
   moving_mm_s: 1.0      # "moving" threshold for the motion fraction

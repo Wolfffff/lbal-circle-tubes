@@ -1,4 +1,4 @@
-"""Collect per-video behavior summaries into one table (+ immobile_bees: bees moving in < 2 % of frames).
+"""Collect per-video behavior summaries into one table (+ immobile_bees: bees moving in < 5 % of frames).
 
   python behavior_table.py --out behavior.tsv results/v3/<ds>/behavior/*.summary.json
 """
@@ -7,7 +7,7 @@ import json
 
 import pandas as pd
 
-IMMOBILE = 0.02  # moving in < 2 % of frames
+IMMOBILE = 0.05  # moving in < 5 % of frames (median bee: 46 %)
 
 ap = argparse.ArgumentParser()
 ap.add_argument("summaries", nargs="*")

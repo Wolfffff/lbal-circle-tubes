@@ -26,7 +26,7 @@ for all 275 videos) and reruns only redo what's missing.
 
 Per video, in `results/v4_convnext/<dataset>/`: `tracked/` (pose), `naps/` (identity), `filtered/`
 (`.slp` + `.analysis.h5` trajectories), `behavior/` (the files above + `summary.json`);
-per dataset: `behavior.tsv` (with an `immobile_bees` flag), `qc.tsv`.
+per dataset: `behavior.tsv` (speeds in mm/s via the rig's `mm_per_px`; `immobile_bees` flag), `qc.tsv`.
 `scripts/showcase.py` renders example clips (smoothed with [`movement`](https://movement.neuroinformatics.dev)).
 
 ## Changes from the original processing
@@ -78,16 +78,20 @@ v3 / v3b (UNet only): median 2.8 / 4.6 / 3.5 / 3.6 / 2.4, 90th pct 8.2 / 15.6 / 
 
 ## Open issues
 
-- **melanderi**: both tags read bright, so it is tracked without identity (`identity: false`).
-  Which colours were used?
-- **mm/px**: the motion fraction uses 0.0946 mm/px (LBAL rig); set `mm_per_px` per dataset.
+- **melanderi**: purple + black, but from different paper: the black tag reads mid-grey (tag
+  brightness ~80–105 vs ~20–50 elsewhere), so the two tags separate cleanly in only ~3 of 10 videos.
+  Tracked without identity (`identity: false`).
+- **mm/px** per rig (`datasets.<ds>.mm_per_px`): aurata / pura / zephyrus / local_26 103.6 px/cm,
+  melanderi 77.4, oenotherae 97.5, LBAL 105.7 (0.0946 mm/px). local_26 assumed to be the aurata/pura/zephyrus rig.
   `scripts/R/utils.R` counts motion from one bee's column only.
 - **oenotherae** has no corrected frames; ~60 would help most. The 2026-06-22 session is darker
   than the rest (`figures/dark_oenotherae_session.jpg`); `v3b`/`v4_convnext` handle it, `v3` does not.
 - `local_26` mixes aurata / pura / zephyrus (species per video: `metadata/local_26_videos.tsv`).
-- **Possibly immobile bees** (moving < 2 % of frames; median bee 46 %): aurata
-  `Camera1_20250815_144929_TR` (both), local_26 `20260604_1239_Camera2_BR` (both), pura
-  `Camera2_20250815_144932_TR` (purple). Check before analysis.
+- **Possibly immobile bees** (`immobile_bees` in `behavior.tsv`: moving in < 5 % of frames; median
+  bee 46 %): both bees in aurata `Camera1_20250815_144929_TR` and pura `Camera2_20250815_144932_TR`;
+  one bee in aurata `Camera1_20250815_144929_TL`, zephyrus `20250704_1517_Camera0_TL`,
+  `Camera1_20250805_120715_BL`/`BR`, `Camera1_20250814_112009_TR`, local_26 `20260603_1317_Camera1_TL`,
+  `20260604_1239_Camera2_BR`. Check before analysis.
 - Six tracked local_26 crops are not in the 2026 Drive folders: `20260504_1244_Camera1_TR`,
   `20260519_1225_Camera1_TL`, `20260526_1233_Camera1_BL`, `20260528_1300_Camera1_TL`/`TR`,
   `20260604_1239_Camera1_BR`. Exclude?

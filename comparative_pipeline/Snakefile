@@ -120,6 +120,13 @@ def batch_markers(ds, model=MODEL):
             + [f"results/{model}/{ds}/batches/{b}.done" for b, _ in cpu_batches(ds, model)])
 
 
+# resources of the GPU inference jobs (gpu_batch, trackbench_predict)
+if BATCH.get("gpu_partition") == "mig":  # MIG slices allow exactly 1 core
+    GPU_RES = dict(slurm_partition="mig", slurm_extra="--gres=gpu:1", cpus_per_task=1,
+                   mem_mb=64000)  # one 1800 px melanderi video needed >32 GB
+else:
+    GPU_RES = dict(slurm_extra="--gres=gpu:1", cpus_per_task=8, mem_mb=64000)
+
 SMK_LOCAL = (f"{ROOT}/.venv-smk/bin/snakemake --nolock --keep-going --rerun-incomplete "
              "--rerun-triggers mtime --quiet rules")
 
@@ -136,7 +143,7 @@ rule gpu_batch:
     output: "results/{model}/{ds}/batches/gpu-{batch}.done"
     params: members="results/{model}/{ds}/batches/gpu-{batch}.txt"
     log: "logs/batches/{model}/{ds}/gpu-{batch}.log"
-    resources: slurm_extra="--gres=gpu:1", cpus_per_task=8, mem_mb=64000, runtime=180,  # measured: <=2 h, <=50 GB per 10 videos
+    resources: **GPU_RES, runtime=240,  # MIG: ~26 min per 15-min 1440 px video, more at 1800 px
     shell:
         "{SMK_LOCAL} -j 1 $(sed 's|.*|results/{wildcards.model}/{wildcards.ds}/tracked/&.slp|' "
         "{params.members}) > {log} 2>&1 && touch {output}"
@@ -344,12 +351,7 @@ rule behavior:
 rule behavior_table:
     input: lambda w: batch_markers(w.ds, w.model)
     output: "results/{model}/{ds}/behavior.tsv"
-    run:
-        import json, pandas as pd
-        rows = [json.load(open(f"results/{wildcards.model}/{wildcards.ds}/behavior/{v}.summary.json"))
-                for v in videos(wildcards.ds)
-                if Path(f"results/{wildcards.model}/{wildcards.ds}/behavior/{v}.summary.json").exists()]
-        pd.DataFrame(rows).to_csv(output[0], sep="\t", index=False)
+    shell: "{NPY} scripts/behavior_table.py --out {output} results/{wildcards.model}/{wildcards.ds}/behavior/*.summary.json"
 
 
 def qc_inputs(w):
@@ -380,7 +382,7 @@ rule trackbench_predict:
     output: "results/{model}/trackbench/{tracker}/{ds}/{video}.slp"
     params: t=lambda w: TB["trackers"][w.tracker]
     log: "logs/trackbench/{model}/{tracker}/{ds}/{video}.log"
-    resources: slurm_extra="--gres=gpu:1", cpus_per_task=4, mem_mb=32000, runtime=60,
+    resources: **GPU_RES, runtime=60,
     shell:
         "{SLEAP_NN} predict -m models/{wildcards.model}.centroid "
         "-m models/{wildcards.model}.centered_instance -i {input.video} -o {output} "

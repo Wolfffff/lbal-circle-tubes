@@ -74,13 +74,28 @@ models:
     centered_instance:
       config: configs/base_centered_instance.json
       init: scratch
+      # (here models/v3b.centered_instance is a link to v3.centered_instance; a fresh clone trains it)
+    args: *recipe
+  v4_convnext:   # ImageNet-pretrained ConvNeXt-Tiny for the pose stage; UNet centroid as v3b
+    # (a ConvNeXt centroid on whole frames trained ~20x slower: 908 vs 41-48 s/epoch)
+    centroid:
+      config: configs/base_centroid.json
+      init: scratch
+      args: --brightness 0.5 1.5 --contrast 0.6 1.5
+    centered_instance:
+      config: configs/base_centered_instance.json
+      init: scratch
+      args: --backbone convnext --backbone-size tiny
     args: *recipe
 
-infer_model: v3b         # model used to track the videos
+infer_model: v4_convnext  # held-out + leave-one-species-out best (results/v4_convnext/eval.tsv, loso.tsv)
 
 # Videos per SLURM job (the pipeline runs per-video rules inside each batch job)
 batch:
-  gpu: 10            # predict+track, sequential on one GPU (~4 min per 15-min video)
+  # GPU inference runs on Della's MIG slices (1/7 A100, 1 core): ~12 fps (decode-bound) vs ~44 on a
+  # full GPU, but the mig queue is far shorter. Set gpu_partition: "" to use whole GPUs.
+  gpu_partition: mig
+  gpu: 4             # videos per GPU batch (~26 min each on a MIG slice)
   cpu: 12            # decodes + NAPS + filter
   cpu_parallel: 4    # videos at a time inside a CPU batch job
 
@@ -88,6 +103,7 @@ batch:
 # evaluate on the unseen species -> results/<model>/loso.tsv (how well it transfers to a new species)
 loso:
   v3: [aurata, melanderi, pura, zephyrus]
+  v4_convnext: [aurata, melanderi]
 
 # ---------------------------------------------------------------- inference + tracking
 predict:

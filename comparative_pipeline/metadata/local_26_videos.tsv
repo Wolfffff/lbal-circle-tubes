@@ -1,14 +1,14 @@
 # local_26 (2026 local recordings): species and bee IDs read from the arena stickers
 # (frame ~3000 of each crop; AAUR = Augochlorella aurata, APUR = A. pura, LZEP = Lasioglossum zephyrus;
 #  "1P+2B" = bee 1 purple dot, bee 2 black dot). "empty" = the crop shows no arena (not tracked).
-# "?" = sticker not visible/legible in that frame; species guessed from the session where marked.
+# "?" = sticker not visible/legible in that frame. Species confirmed against Michelle's 2026 Drive folders (AAUR/APUR/LZEP; 43 videos, all agree); 6 tracked crops are not in those folders (see README).
 video	species	sticker	track
 20260427_1232_Camera1_BL	empty		no
 20260427_1232_Camera1_BR	empty		no
 20260427_1232_Camera1_TL	AAUR	1P+2B	yes
 20260427_1232_Camera1_TR	AAUR	3P+4B	yes
-20260504_1244_Camera1_BL	AAUR?	?	yes
-20260504_1244_Camera1_BR	AAUR?	?	yes
+20260504_1244_Camera1_BL	AAUR	?	yes
+20260504_1244_Camera1_BR	AAUR	?	yes
 20260504_1244_Camera1_TL	AAUR	5P+6B	yes
 20260504_1244_Camera1_TR	AAUR	7P+8B	yes
 20260518_1225_Camera1_BL	empty		no
@@ -66,4 +66,4 @@ video	species	sticker	track
 20260605_1423_Camera1_BL	APUR	33P+34B	yes
 20260605_1423_Camera1_BR	empty		no
 20260605_1423_Camera1_TL	APUR	29P+30B	yes
-20260605_1423_Camera1_TR	APUR?	31?	yes
+20260605_1423_Camera1_TR	APUR	31?	yes

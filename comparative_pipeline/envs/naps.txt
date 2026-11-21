@@ -4,3 +4,4 @@ opencv-contrib-python-headless==4.13.0.92
 sleap-io==0.9.5
 pandas
 pillow
+movement==0.17.0   # pose cleaning + kinematics for render_video.py

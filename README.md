@@ -42,7 +42,7 @@ Steps 2–7 run as one Snakemake workflow (`comparative_pipeline/` on that branc
   per-species "fine-tunes" were trained from scratch on about 54 frames.
 - **One pooled model.** It is trained on all species with a ConvNeXt backbone, which gives the
   lowest error on held-out frames and on species the model hasn't seen.
-- **Identity from tag brightness.** The videos are grayscale, so this replaces the colour
+- **Identity from tag brightness.** The videos are grayscale, so this replaces the color
   classifier (`classifier.pkl`). That classifier called both bees "black" in about 70% of
   frames.
 - **Per-rig mm/px values** come from Michelle. Speeds are in mm/s.
@@ -55,8 +55,8 @@ Steps 2–7 run as one Snakemake workflow (`comparative_pipeline/` on that branc
 - **ArUco** (Bombus): a printed square code with many IDs. NAPS reads the code, so it works with
   many bees per arena.
 - **Circle tags** (sweat bees): a paint dot that only shows up as bright or dark in grayscale.
-  This works for 2 bees per tube if the two colours differ in brightness. melanderi has no
-  identity because both of its colours read bright.
+  This works for 2 bees per tube if the two colors differ in brightness. melanderi has no
+  identity because both of its colors read bright.
 - Output track names still say `ArUcoTag#black` / `ArUcoTag#purple`. That is only the NAPS
   naming; these are circle tags.
 
@@ -64,7 +64,7 @@ Steps 2–7 run as one Snakemake workflow (`comparative_pipeline/` on that branc
 
 | Machine | Use |
 |---|---|
-| Local | Labelling, checking tracks by eye, R stats and figures |
+| Local | Labeling, checking tracks by eye, R stats and figures |
 | Della | Training, inference, NAPS, the Snakemake pipeline (`/scratch/gpfs/SKOCHER/...`; scratch is not backed up) |
 | Argo | Long-term storage for raw video and intermediates |
 | Berkeley machines | To confirm with Michelle |
@@ -75,7 +75,7 @@ Everything is keyed on the video name (e.g. `20230619_113305_TR`).
 
 - **`videos.tsv`** (proposed): one row per video. Columns: `video, species, year, date, rig,
   quadrant, fps, mm_per_px, raw_path, usable, reason, pipeline_version, identity_coverage`.
-- **Bee sheet** (like `data/LBAL_Master_Data_Sheet.csv`): one row per bee, with tag colour,
+- **Bee sheet** (like `data/LBAL_Master_Data_Sheet.csv`): one row per bee, with tag color,
   partner, caste, nest and morphology. `Remove? = Yes` drops a bee in `scripts/R/utils.R`.
 
 ## Repo layout
@@ -86,7 +86,7 @@ data/video_df.csv                 video → caste contrast (built by scripts/R/u
 data/manifest.csv                 stray Bombus file, ignore
 data/processed_data/              LBAL per-video velocities, interactions, bouts (+ old SLURM scripts)
 scripts/R/                        stats and figures (run from repo root)
-scripts/python/naps/              old colour classifier (superseded)
+scripts/python/naps/              old color classifier (superseded)
 figures/                          paper figures
 ```
 
